@@ -1,9 +1,12 @@
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 extern crate env_logger;
 
-#[macro_use] extern crate serde_derive;
+#[macro_use]
+extern crate serde_derive;
 
-#[macro_use] extern crate gfx;
+#[macro_use]
+extern crate gfx;
 extern crate gfx_core;
 extern crate gfx_window_sdl;
 extern crate sdl2;
@@ -50,20 +53,20 @@ use std::time::Duration;
 use gfx_core::format::{DepthStencil, Rgba8};
 
 pub fn main() {
-    /* Initialize logging */
+    // Initialize logging
     env_logger::init().unwrap();
 
-    /* Load settings */
+    // Load settings
     let try_config = config::load();
     let mut config = match try_config {
         Ok(config) => config,
-        Err(err) => panic!("{:?}",err),
+        Err(err) => panic!("{:?}", err),
     };
 
 
     let sdl_context = sdl2::init().unwrap();
 
-    /* Initialize video */
+    // Initialize video
     let video_subsystem = sdl_context.video().unwrap();
 
 
@@ -72,10 +75,10 @@ pub fn main() {
     config.video.set_auto_resolution(display_mode.w as u32, display_mode.h as u32);
 
     let config = config;
-    
+
     let w = config.video.x_resolution();
     let h = config.video.y_resolution();
-    
+
     if config.video.auto_resolution() {
         info!("Using current (scaled) resolution {:?}x{:?}", w, h);
     }
@@ -84,9 +87,9 @@ pub fn main() {
     if config.video.fullscreen {
         builder.fullscreen();
     }
-    
 
-    let (window, glcontext,mut device,mut factory, color_view, depth_view) =
+
+    let (window, glcontext, mut device, mut factory, color_view, depth_view) =
         gfx_window_sdl::init::<Rgba8, DepthStencil>(builder).expect("gfx_window_sdl::init failed!");
 
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
@@ -100,7 +103,7 @@ pub fn main() {
         out: color_view,
     };
 
-    /* Initialize controller */
+    // Initialize controller
     let controller_subsystem = sdl_context.game_controller().unwrap();
 
     // Enable controller events
@@ -108,27 +111,33 @@ pub fn main() {
         controller_subsystem.set_event_state(true);
     }
 
-    let mut open_controllers : Vec<sdl2::controller::GameController> = vec![];
+    let mut open_controllers: Vec<sdl2::controller::GameController> = vec![];
 
     let num_joysticks = controller_subsystem.num_joysticks().unwrap();
     for id in 0..num_joysticks {
         if controller_subsystem.is_game_controller(id) {
             let controller = controller_subsystem.open(id).unwrap();
-            open_controllers.push( controller);
+            open_controllers.push(controller);
         }
     }
 
-    /* Event loop */
+    // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
-                Event::ControllerButtonDown { which, button, .. } => info!("Controller {:?} Button {:?} down", which, button),
-                Event::ControllerAxisMotion { which, axis, value, .. } => info!("Controller {:?} Axis {:?}: {:?}", which, axis, value),
-                
+                Event::ControllerButtonDown { which, button, .. } => {
+                    info!("Controller {:?} Button {:?} down", which, button)
+                }
+                Event::ControllerAxisMotion { which, axis, value, .. } => {
+                    info!("Controller {:?} Axis {:?}: {:?}", which, axis, value)
+                }
+
                 Event::ControllerDeviceAdded { which, .. } => info!("Controller {:?} Added", which),
-                Event::ControllerDeviceRemoved { which, .. } => info!("Controller {:?} Removed", which),
+                Event::ControllerDeviceRemoved { which, .. } => {
+                    info!("Controller {:?} Removed", which)
+                }
 
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
