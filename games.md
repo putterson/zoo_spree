@@ -1,5 +1,6 @@
 - snake
 - racing
 - marble maze
-- couch moving game
+- couch moving through maze (cooperative?)
 - avoid the wall https://play.google.com/store/apps/details?id=com.flatland.ihp
+- eat things smaller than you
