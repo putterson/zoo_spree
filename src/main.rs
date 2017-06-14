@@ -1,12 +1,14 @@
 #[macro_use] extern crate log;
 extern crate env_logger;
 
+#[macro_use] extern crate serde_derive;
+
 #[macro_use] extern crate gfx;
 extern crate gfx_core;
 extern crate gfx_window_sdl;
 extern crate sdl2;
 
-use log::LogLevel;
+mod config;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
@@ -41,7 +43,6 @@ const TRIANGLE: [Vertex; 3] = [Vertex {
 
 const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
 
-use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
@@ -52,12 +53,38 @@ pub fn main() {
     /* Initialize logging */
     env_logger::init().unwrap();
 
+    /* Load settings */
+    let try_config = config::load();
+    let mut config = match try_config {
+        Ok(config) => config,
+        Err(err) => panic!("{:?}",err),
+    };
+
+
     let sdl_context = sdl2::init().unwrap();
 
     /* Initialize video */
     let video_subsystem = sdl_context.video().unwrap();
 
-    let mut builder = video_subsystem.window("ZooSpree", 800, 600);
+
+    let display_mode = video_subsystem.current_display_mode(0).unwrap();
+
+    config.video.set_auto_resolution(display_mode.w as u32, display_mode.h as u32);
+
+    let config = config;
+    
+    let w = config.video.x_resolution();
+    let h = config.video.y_resolution();
+    
+    if config.video.auto_resolution() {
+        info!("Using current (scaled) resolution {:?}x{:?}", w, h);
+    }
+
+    let mut builder = video_subsystem.window("Zoo Spree", w, h);
+    if config.video.fullscreen {
+        builder.fullscreen();
+    }
+    
 
     let (window, glcontext,mut device,mut factory, color_view, depth_view) =
         gfx_window_sdl::init::<Rgba8, DepthStencil>(builder).expect("gfx_window_sdl::init failed!");
@@ -68,7 +95,7 @@ pub fn main() {
                                 pipe::new())
         .unwrap();
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
-    let mut data = pipe::Data {
+    let data = pipe::Data {
         vbuf: vertex_buffer,
         out: color_view,
     };
@@ -77,7 +104,7 @@ pub fn main() {
     let controller_subsystem = sdl_context.game_controller().unwrap();
 
     // Enable controller events
-    if(!controller_subsystem.event_state()){
+    if !controller_subsystem.event_state() {
         controller_subsystem.set_event_state(true);
     }
 
@@ -85,7 +112,7 @@ pub fn main() {
 
     let num_joysticks = controller_subsystem.num_joysticks().unwrap();
     for id in 0..num_joysticks {
-        if(controller_subsystem.is_game_controller(id)){
+        if controller_subsystem.is_game_controller(id) {
             let controller = controller_subsystem.open(id).unwrap();
             open_controllers.push( controller);
         }
@@ -98,6 +125,11 @@ pub fn main() {
         for event in event_pump.poll_iter() {
             match event {
                 Event::ControllerButtonDown { which, button, .. } => info!("Controller {:?} Button {:?} down", which, button),
+                Event::ControllerAxisMotion { which, axis, value, .. } => info!("Controller {:?} Axis {:?}: {:?}", which, axis, value),
+                
+                Event::ControllerDeviceAdded { which, .. } => info!("Controller {:?} Added", which),
+                Event::ControllerDeviceRemoved { which, .. } => info!("Controller {:?} Removed", which),
+
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
                 _ => {}

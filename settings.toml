@@ -1,0 +1,6 @@
+[video]
+fullscreen = false
+# Resolution of the form WWWWxHHHH - use auto for desktop resolution
+resolution = "auto"
+# Divide the resolution by the scale - useful for running at half resolution (scale = 2)
+scale = 2
