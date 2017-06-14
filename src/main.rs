@@ -1,9 +1,12 @@
-#[macro_use]
-extern crate gfx;
+#[macro_use] extern crate log;
+extern crate env_logger;
 
+#[macro_use] extern crate gfx;
 extern crate gfx_core;
 extern crate gfx_window_sdl;
 extern crate sdl2;
+
+use log::LogLevel;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
@@ -46,7 +49,12 @@ use std::time::Duration;
 use gfx_core::format::{DepthStencil, Rgba8};
 
 pub fn main() {
+    /* Initialize logging */
+    env_logger::init().unwrap();
+
     let sdl_context = sdl2::init().unwrap();
+
+    /* Initialize video */
     let video_subsystem = sdl_context.video().unwrap();
 
     let mut builder = video_subsystem.window("ZooSpree", 800, 600);
@@ -65,12 +73,31 @@ pub fn main() {
         out: color_view,
     };
 
+    /* Initialize controller */
+    let controller_subsystem = sdl_context.game_controller().unwrap();
 
+    // Enable controller events
+    if(!controller_subsystem.event_state()){
+        controller_subsystem.set_event_state(true);
+    }
+
+    let mut open_controllers : Vec<sdl2::controller::GameController> = vec![];
+
+    let num_joysticks = controller_subsystem.num_joysticks().unwrap();
+    for id in 0..num_joysticks {
+        if(controller_subsystem.is_game_controller(id)){
+            let controller = controller_subsystem.open(id).unwrap();
+            open_controllers.push( controller);
+        }
+    }
+
+    /* Event loop */
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
+                Event::ControllerButtonDown { which, button, .. } => info!("Controller {:?} Button {:?} down", which, button),
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
                 _ => {}
