@@ -14,14 +14,13 @@ extern crate sdl2;
 extern crate cgmath;
 
 mod config;
+mod game;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
 
-use cgmath::Vector2;
-use cgmath::{Rotation, Rotation2, Basis2};
-use cgmath::Rad;
-use std::f32;
+use game::minigame::MiniGame;
+use game::minigames::triangle::Triangle;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
@@ -38,14 +37,13 @@ gfx_defines!{
     }
 }
 
-
-const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
-
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
 
 use gfx_core::format::{DepthStencil, Rgba8};
+
+const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
 
 pub fn main() {
     // Initialize logging
@@ -88,30 +86,6 @@ pub fn main() {
         gfx_window_sdl::init::<Rgba8, DepthStencil>(builder).expect("gfx_window_sdl::init failed!");
 
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
-    let pso = factory.create_pipeline_simple(include_bytes!("shader/triangle_120.glslv"),
-                                include_bytes!("shader/triangle_120.glslf"),
-                                pipe::new())
-        .unwrap();
-
-    let mut TRIANGLE: [Vertex; 3] = [Vertex {
-                                    pos: [-0.5, -0.5],
-                                    color: [1.0, 0.0, 0.0],
-                                },
-                                Vertex {
-                                    pos: [0.5, -0.5],
-                                    color: [0.0, 1.0, 0.0],
-                                },
-                                Vertex {
-                                    pos: [0.0, 0.5],
-                                    color: [0.0, 0.0, 1.0],
-                                }];
-
-
-    let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
-    let mut data = pipe::Data {
-        vbuf: vertex_buffer,
-        out: color_view,
-    };
 
     // Initialize controller
     let controller_subsystem = sdl_context.game_controller().unwrap();
@@ -130,6 +104,9 @@ pub fn main() {
             open_controllers.push(controller);
         }
     }
+
+    //
+    let mut minigame : Triangle = MiniGame::new();
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -156,30 +133,13 @@ pub fn main() {
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
-        encoder.clear(&data.out, CLEAR_COLOR);
-        
-        encoder.draw(&slice, &pso, &data);
+        encoder.clear(&color_view, CLEAR_COLOR);
+
+        minigame.step();
+        minigame.render(&mut encoder, &mut factory, &color_view);
+
         encoder.flush(&mut device);
         window.gl_swap_window();
         device.cleanup();
-
-        
-        let rot: Basis2<f32> = Rotation2::from_angle(Rad(0.01f32 * f32::consts::PI));
-
-        let new_verts : Vec<Vertex> = TRIANGLE.iter().map(|x| {
-            let initial: Vector2<f32> = Vector2 {x : x.pos[0], y : x.pos[1] };
-            let rotated = rot.rotate_vector(initial);
-
-            Vertex {
-                pos: [rotated.x, rotated.y],
-                color: [0.0, 0.0, 1.0],
-            }
-        }).collect();
-        
-        for i in 0..3 {
-            TRIANGLE[i] = new_verts[i]
-        }
-        let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
-        data.vbuf = vertex_buffer;
     }
 }
