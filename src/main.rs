@@ -11,10 +11,17 @@ extern crate gfx_core;
 extern crate gfx_window_sdl;
 extern crate sdl2;
 
+extern crate cgmath;
+
 mod config;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
+
+use cgmath::Vector2;
+use cgmath::{Rotation, Rotation2, Basis2};
+use cgmath::Rad;
+use std::f32;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
@@ -31,18 +38,6 @@ gfx_defines!{
     }
 }
 
-const TRIANGLE: [Vertex; 3] = [Vertex {
-                                   pos: [-0.5, -0.5],
-                                   color: [1.0, 0.0, 0.0],
-                               },
-                               Vertex {
-                                   pos: [0.5, -0.5],
-                                   color: [0.0, 1.0, 0.0],
-                               },
-                               Vertex {
-                                   pos: [0.0, 0.5],
-                                   color: [0.0, 0.0, 1.0],
-                               }];
 
 const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
 
@@ -97,8 +92,23 @@ pub fn main() {
                                 include_bytes!("shader/triangle_120.glslf"),
                                 pipe::new())
         .unwrap();
+
+    let mut TRIANGLE: [Vertex; 3] = [Vertex {
+                                    pos: [-0.5, -0.5],
+                                    color: [1.0, 0.0, 0.0],
+                                },
+                                Vertex {
+                                    pos: [0.5, -0.5],
+                                    color: [0.0, 1.0, 0.0],
+                                },
+                                Vertex {
+                                    pos: [0.0, 0.5],
+                                    color: [0.0, 0.0, 1.0],
+                                }];
+
+
     let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
-    let data = pipe::Data {
+    let mut data = pipe::Data {
         vbuf: vertex_buffer,
         out: color_view,
     };
@@ -147,9 +157,29 @@ pub fn main() {
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
         encoder.clear(&data.out, CLEAR_COLOR);
+        
         encoder.draw(&slice, &pso, &data);
         encoder.flush(&mut device);
         window.gl_swap_window();
         device.cleanup();
+
+        
+        let rot: Basis2<f32> = Rotation2::from_angle(Rad(0.01f32 * f32::consts::PI));
+
+        let new_verts : Vec<Vertex> = TRIANGLE.iter().map(|x| {
+            let initial: Vector2<f32> = Vector2 {x : x.pos[0], y : x.pos[1] };
+            let rotated = rot.rotate_vector(initial);
+
+            Vertex {
+                pos: [rotated.x, rotated.y],
+                color: [0.0, 0.0, 1.0],
+            }
+        }).collect();
+        
+        for i in 0..3 {
+            TRIANGLE[i] = new_verts[i]
+        }
+        let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&TRIANGLE, ());
+        data.vbuf = vertex_buffer;
     }
 }
