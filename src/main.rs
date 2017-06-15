@@ -106,7 +106,7 @@ pub fn main() {
     }
 
     //
-    let mut minigame : Triangle = MiniGame::new();
+    let mut minigame : Triangle<_> = MiniGame::new(&mut factory, &color_view);
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -136,7 +136,7 @@ pub fn main() {
         encoder.clear(&color_view, CLEAR_COLOR);
 
         minigame.step();
-        minigame.render(&mut encoder, &mut factory, &color_view);
+        minigame.render(&mut encoder);
 
         encoder.flush(&mut device);
         window.gl_swap_window();
