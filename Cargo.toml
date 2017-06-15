@@ -14,3 +14,4 @@ env_logger = "*"
 toml = "0.4"
 serde = "*"
 serde_derive = "*"
+wrapped2d = { path = "dependencies/rust_box2d"}

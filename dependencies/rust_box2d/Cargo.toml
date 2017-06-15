@@ -1,0 +1,32 @@
+[package]
+name = "wrapped2d"
+version = "0.3.4"
+authors = ["Thomas Koehler <basta.t.k+git@gmail.com>"]
+
+description = "Rust binding for Box2D"
+documentation = "https://bastacyclop.github.io/rust_box2d/wrapped2d/"
+repository = "https://github.com/Bastacyclop/rust_box2d.git"
+readme = "README.md"
+keywords = ["physics", "binding", "bindings", "box2d"]
+license = "zlib-acknowledgement"
+
+build = "build_frontend.rs"
+
+[features]
+serialize = ["serde", "serde_derive"]
+default = []
+
+[build-dependencies]
+gcc = "^0.3"
+
+[dependencies]
+libc = "^0.2"
+vec_map = "^0.8"
+bitflags = "^0.9"
+serde = { version = "^0.9", optional = true }
+serde_derive = { version = "^0.9", optional = true }
+cgmath = { version = "^0.14", optional = true }
+nalgebra = { version = "^0.10", optional = true }
+
+[dev-dependencies]
+approx = "^0.1"
