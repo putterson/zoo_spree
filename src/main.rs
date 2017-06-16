@@ -21,6 +21,7 @@ use gfx::Device;
 
 use game::minigame::MiniGame;
 use game::minigames::triangle::Triangle;
+use game::minigames::box2d::Box2DTestGame;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
@@ -105,8 +106,9 @@ pub fn main() {
         }
     }
 
-    //
-    let mut minigame : Triangle = MiniGame::new();
+    // The active minigame
+    // let mut minigame : Triangle = MiniGame::new();
+    let mut minigame : Box2DTestGame = MiniGame::new();
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
