@@ -29,6 +29,10 @@ gfx_defines!{
         color: [f32; 3] = "a_Color",
     }
 
+    constant Transform {
+        transform: [[f32; 4];4] = "u_Transform",
+    }
+
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
         out: gfx::RenderTarget<ColorFormat> = "Target0",
@@ -86,32 +90,13 @@ impl<R> MiniGame<R> for Triangle<R>
 
             v.pos = [rotated.x, rotated.y];
         }
-        // let new_verts: Vec<Vertex> = self.vertices
-        //     .iter()
-        //     .map(|x| {
-        //         let initial: Vector2<f32> = Vector2 {
-        //             x: x.pos[0],
-        //             y: x.pos[1],
-        //         };
-        //         let rotated = rot.rotate_vector(initial);
-
-        //         Vertex {
-        //             pos: [rotated.x, rotated.y],
-        //             color: x.color,
-        //         }
-        //     })
-        //     .collect();
-
-        // for i in 0..3 {
-        //     self.vertices[i] = new_verts[i]
-        // }
     }
 
     fn render<C>(&self, encoder: &mut Encoder<R, C>) -> ()
         where C: gfx::CommandBuffer<R>
     {
-        encoder.update_buffer(&self.data.vbuf, &self.vertices, 0)
-            .expect("Failed to update vertex buffer");
+        // encoder.update_buffer(&self.data.vbuf, &self.vertices, 0)
+            // .expect("Failed to update vertex buffer");
         encoder.draw(&self.slice, &self.pso, &self.data);
     }
 }
