@@ -59,7 +59,7 @@ struct GameState {
 
 impl GameState {
     fn new() -> GameState {
-        let gravity = Point { x: 0., y: -10. };
+        let gravity = Point { x: 0., y: -10.0 };
         let mut world = b2::World::<NoUserData>::new(&gravity);
         GameState {
             objects: vec![],
@@ -69,9 +69,22 @@ impl GameState {
     fn step(&mut self) {
         self.b2world.step(1./60., 6, 2);
     }
-    fn new_object<'a>(&'a mut self, shape: Shape) -> &'a GameObject{
+    fn add_borders(&mut self) {
+        let shape = Shape {
+            vertices: vec![
+                Point {x: -1.0, y: -1.0},
+                Point {x: 1.0, y: -1.0},
+                Point {x: 0.0, y: 0.5},
+            ],
+            color: [0.0,1.0,0.0]
+        };
+        self.new_object(shape, /*Static object*/ false);
+    }
+    fn new_object<'a>(&'a mut self, shape: Shape, is_dynamic: bool) -> &'a GameObject{
         let mut body_def = b2::BodyDef::new();
-        body_def.body_type = b2::BodyType::Dynamic;
+        if is_dynamic {
+            body_def.body_type = b2::BodyType::Dynamic;
+        }
         let body_handle: TypedHandle<b2::Body> = self.b2world.create_body(&body_def);
         let body_box = b2::PolygonShape::new_with(&shape.vertices);
 
@@ -109,10 +122,11 @@ impl MiniGame for Box2DTestGame {
             vertices: vec![
                 Point {x: -0.5, y: -0.5},
                 Point {x: 0.5, y: -0.5},
-                Point {x: 0.0, y: 0.5},
+                Point {x: 0.0, y: 0.2},
             ], 
             color: [0.0, 0.0, 1.0]
-        }); 
+        }, /*Dynamic object:*/ true); 
+        state.add_borders();
         Box2DTestGame {
             state: state 
         }
