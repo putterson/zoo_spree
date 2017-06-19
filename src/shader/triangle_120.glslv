@@ -2,6 +2,7 @@
 
 attribute vec2 a_Pos;
 attribute vec3 a_Color;
+
 varying vec4 v_Color;
 
 void main() {

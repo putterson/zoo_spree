@@ -20,8 +20,8 @@ use gfx::traits::FactoryExt;
 use gfx::Device;
 
 use game::minigame::MiniGame;
-use game::minigames::triangle::Triangle;
 use game::minigames::box2d::Box2DTestGame;
+use game::minigames::triangle_buffers::Triangle;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
@@ -108,7 +108,7 @@ pub fn main() {
 
     // The active minigame
     // let mut minigame : Triangle = MiniGame::new();
-    let mut minigame : Box2DTestGame = MiniGame::new();
+    let mut minigame : Box2DTestGame<_> = MiniGame::new(&mut factory, &color_view);
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -138,7 +138,7 @@ pub fn main() {
         encoder.clear(&color_view, CLEAR_COLOR);
 
         minigame.step();
-        minigame.render(&mut encoder, &mut factory, &color_view);
+        minigame.render(&mut encoder);
 
         encoder.flush(&mut device);
         window.gl_swap_window();

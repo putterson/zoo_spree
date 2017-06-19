@@ -4,11 +4,12 @@ use gfx;
 
 use ColorFormat;
 
-pub trait MiniGame {
-    fn new() -> Self;
+pub trait MiniGame<R>
+    where R: gfx::Resources
+          
+{
+    fn new<F>(factory: &mut F, out: &gfx::handle::RenderTargetView<R, ColorFormat>) -> Self where F: gfx::Factory<R>;
+
     fn step(&mut self) -> ();
-    fn render<R, F, C>(&self, encoder: &mut Encoder<R, C>, factory: &mut F, out: &gfx::handle::RenderTargetView<R, ColorFormat>) -> ()
-        where R: gfx::Resources,
-              F: gfx::Factory<R>,
-              C: gfx::CommandBuffer<R>;
+    fn render<C>(&self, encoder: &mut Encoder<R, C>) -> () where C: gfx::CommandBuffer<R>;
 }
