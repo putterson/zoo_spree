@@ -59,8 +59,13 @@ impl<R> MiniGame<R> for Triangle<R>
                                     pipe::new())
             .unwrap();
 
+        let vertex_buffer = factory.create_buffer(vertices.len() as usize,
+                           gfx::buffer::Role::Vertex,
+                           gfx::memory::Usage::Dynamic,
+                           gfx::Bind::empty())
+            .unwrap();
 
-        let (vertex_buffer, slice) = factory.create_vertex_buffer_with_slice(&vertices, ());
+        let slice = Slice::new_match_vertex_buffer(&vertex_buffer);
 
         let data = pipe::Data {
             vbuf: vertex_buffer,
@@ -86,32 +91,13 @@ impl<R> MiniGame<R> for Triangle<R>
 
             v.pos = [rotated.x, rotated.y];
         }
-        // let new_verts: Vec<Vertex> = self.vertices
-        //     .iter()
-        //     .map(|x| {
-        //         let initial: Vector2<f32> = Vector2 {
-        //             x: x.pos[0],
-        //             y: x.pos[1],
-        //         };
-        //         let rotated = rot.rotate_vector(initial);
-
-        //         Vertex {
-        //             pos: [rotated.x, rotated.y],
-        //             color: x.color,
-        //         }
-        //     })
-        //     .collect();
-
-        // for i in 0..3 {
-        //     self.vertices[i] = new_verts[i]
-        // }
     }
 
     fn render<C>(&self, encoder: &mut Encoder<R, C>) -> ()
         where C: gfx::CommandBuffer<R>
     {
         encoder.update_buffer(&self.data.vbuf, &self.vertices, 0)
-            .expect("Failed to update vertex buffer");
+        .expect("Failed to update vertex buffer");
         encoder.draw(&self.slice, &self.pso, &self.data);
     }
 }
