@@ -20,7 +20,7 @@ use gfx::traits::FactoryExt;
 use gfx::Device;
 
 use game::minigame::MiniGame;
-use game::minigames::triangle::Triangle;
+use game::minigames::triangle_buffers::Triangle;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
