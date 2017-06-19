@@ -5,3 +5,6 @@
 
 # Rust SDL2 (sdl2)
 - Main docs: http://angrylawyer.github.io/rust-sdl2/sdl2/
+
+# Graphics
+- transform in shader vs. on CPU? https://gamedev.stackexchange.com/questions/90834/is-it-more-efficient-to-transform-vertices-on-the-cpu-or-the-gpu
