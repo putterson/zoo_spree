@@ -94,11 +94,11 @@ impl<R> GameState<R>
                         false);
     }
     fn new_draw_object<'a, F>(&'a mut self,
-                                 factory: &mut F,
-                                 out: &gfx::handle::RenderTargetView<R, ColorFormat>,
-                                 shape: Shape,
-                                 is_dynamic: bool)
-                                 -> &'a GameObject<R>
+                              factory: &mut F,
+                              out: &gfx::handle::RenderTargetView<R, ColorFormat>,
+                              shape: Shape,
+                              is_dynamic: bool)
+                              -> &'a GameObject<R>
         where F: gfx::Factory<R>
     {
         let mut body_def = b2::BodyDef::new();
@@ -184,7 +184,9 @@ pub struct Box2DTestGame<R>
     state: GameState<R>,
 }
 
-impl<R> MiniGame<R> for Box2DTestGame<R> where R: Resources{
+impl<R> MiniGame<R> for Box2DTestGame<R>
+    where R: Resources
+{
     fn new<F>(factory: &mut F,
               out: &gfx::handle::RenderTargetView<R, ColorFormat>)
               -> Box2DTestGame<R>
@@ -195,10 +197,10 @@ impl<R> MiniGame<R> for Box2DTestGame<R> where R: Resources{
                               out,
                               Shape {
                                   vertices: vec![
-                Point {x: -0.5, y: -0.5},
-                Point {x: 0.5, y: -0.5},
-                Point {x: 0.0, y: 0.2},
-            ],
+                                        Point {x: -0.5, y: 0.5},
+                                        Point {x: 0.6, y: 0.5},
+                                        Point {x: 0.0, y: 0.0},
+                                    ],
                                   color: [0.0, 0.0, 1.0],
                               },
                               // Dynamic object:
