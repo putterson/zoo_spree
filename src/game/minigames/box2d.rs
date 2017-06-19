@@ -85,7 +85,7 @@ impl<R> GameState<R>
             vertices: vec![
                 Point {x: -1.0, y: -1.0},
                 Point {x: 1.0, y: -1.0},
-                Point {x: 0.0, y: 0.5},
+                Point {x: 0.0, y: -2.0},
             ],
             color: [0.0, 1.0, 0.0],
         };
