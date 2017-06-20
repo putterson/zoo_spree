@@ -1,3 +1,4 @@
+add_definitions('-fPIC')
 set(BOX2D_Collision_SRCS
 	Collision/b2BroadPhase.cpp
 	Collision/b2CollideCircle.cpp
