@@ -160,7 +160,7 @@ pub fn main() {
         
         encoder.clear(&color_view, CLEAR_COLOR);
 
-        minigame.step(&InputState{controllers: vec![]});
+        minigame.step(&input_state);
         minigame.render(&mut encoder);
 
         encoder.flush(&mut device);
@@ -171,6 +171,6 @@ pub fn main() {
 
 fn debug_controllers(controllers: &Vec<sdl2::controller::GameController>) {
     for ref c in controllers {
-        info!("controller {:?}", c.instance_id());
+        debug!("controller {:?}", c.instance_id());
     }
 }

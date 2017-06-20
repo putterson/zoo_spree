@@ -4,6 +4,7 @@ use cgmath::Vector2;
 use cgmath::{Rotation, Rotation2, Basis2};
 use cgmath::Rad;
 use std::f32;
+use std::i16;
 use std::collections::HashMap;
 
 use gfx;
@@ -79,8 +80,9 @@ impl<R> GameState<R>
             b2world: world,
         }
     }
-    fn step(&mut self) {
+    fn step(&mut self, force: b2::Vec2) {
         self.b2world.step(1. / 60., 6, 2);
+        self.b2world.body_mut(self.objects[0].body).apply_force_to_center(&force, true);
     }
     fn add_borders(&mut self) {
         let shape = Shape {
@@ -212,7 +214,15 @@ impl<R> MiniGame<R> for Box2DTestGame<R>
     }
 
     fn step(&mut self, input: &InputState) {
-        self.state.step();
+        let mut x : f32 = 0.0;
+        let mut y : f32 = 0.0;
+        if input.controllers.len() > 0 {
+            x = (input.controllers[0].axis_l_x as f32 / i16::MAX as f32) * 11.0;
+            y = (input.controllers[0].axis_l_y as f32 / i16::MAX as f32) * 11.0;
+            println!("Applying force! {:?}, {:?}", x, y);
+        }
+
+        self.state.step(b2::Vec2{x: x, y: y});
     }
 
     fn render<C>(&self, encoder: &mut Encoder<R, C>) -> ()
