@@ -11,6 +11,7 @@ use gfx::Resources;
 use gfx::Slice;
 use gfx::traits::FactoryExt;
 
+use input::InputState;
 use game::minigame::MiniGame;
 use ColorFormat;
 
@@ -91,7 +92,7 @@ impl<R> MiniGame<R> for Triangle<R>
         };
     }
 
-    fn step(&mut self) -> () {
+    fn step(&mut self, input: &InputState) -> () {
         self.rotation += 0.01;
 
         let rotbasis: Basis3<f32> = Rotation3::from_angle_z(Rad(self.rotation * f32::consts::PI));

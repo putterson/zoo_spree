@@ -11,6 +11,7 @@ use gfx::Resources;
 use gfx::Slice;
 use gfx::traits::FactoryExt;
 
+use input::InputState;
 use game::minigame::MiniGame;
 use ColorFormat;
 
@@ -83,7 +84,7 @@ impl<R> MiniGame<R> for Triangle<R>
         };
     }
 
-    fn step(&mut self) -> () {
+    fn step(&mut self, input: &InputState) -> () {
         let rot: Basis2<f32> = Rotation2::from_angle(Rad(self.rotation * f32::consts::PI));
 
         for v in self.vertices.iter_mut() {

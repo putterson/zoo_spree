@@ -14,10 +14,13 @@ extern crate sdl2;
 extern crate cgmath;
 
 mod config;
+mod input;
 mod game;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
+
+use input::{InputState, ControllerState};
 
 use game::minigame::MiniGame;
 use game::minigames::box2d::Box2DTestGame;
@@ -97,14 +100,17 @@ pub fn main() {
     }
 
     let mut open_controllers: Vec<sdl2::controller::GameController> = vec![];
+    let mut input_state = InputState { controllers: vec![] };
+    
+    // let num_joysticks = controller_subsystem.num_joysticks().unwrap();
+    // for id in 0..num_joysticks {
+    //     if controller_subsystem.is_game_controller(id) {
+    //         let controller = controller_subsystem.open(id).unwrap();
+    //         open_controllers.push(controller);
+    //     }
+    // }
 
-    let num_joysticks = controller_subsystem.num_joysticks().unwrap();
-    for id in 0..num_joysticks {
-        if controller_subsystem.is_game_controller(id) {
-            let controller = controller_subsystem.open(id).unwrap();
-            open_controllers.push(controller);
-        }
-    }
+    
 
     // The active minigame
     // let mut minigame : Triangle = MiniGame::new();
@@ -116,16 +122,31 @@ pub fn main() {
     'running: loop {
         for event in event_pump.poll_iter() {
             match event {
-                Event::ControllerButtonDown { which, button, .. } => {
-                    info!("Controller {:?} Button {:?} down", which, button)
-                }
-                Event::ControllerAxisMotion { which, axis, value, .. } => {
-                    info!("Controller {:?} Axis {:?}: {:?}", which, axis, value)
-                }
+                Event::ControllerButtonDown { .. } |
+                Event::ControllerButtonUp { .. } |
+                Event::ControllerAxisMotion { .. } => {
+                    input_state.update(event);
 
-                Event::ControllerDeviceAdded { which, .. } => info!("Controller {:?} Added", which),
+                    for c in input_state.controllers.iter() {
+                        info!("{:?}", c);
+                    }
+                }
+                Event::ControllerDeviceAdded { which, .. } => {
+                    info!("Controller {:?} Added", which);
+                    let controller = controller_subsystem.open(which as u32).unwrap();
+                    input_state.controllers.push(ControllerState::from(&controller));
+                    open_controllers.push(controller);
+
+                    
+                    info!("Open controllers size {:?}", open_controllers.len());
+                    debug_controllers(&open_controllers);
+                }
+                
                 Event::ControllerDeviceRemoved { which, .. } => {
-                    info!("Controller {:?} Removed", which)
+                    info!("Controller {:?} Removed", which);
+                    open_controllers.retain(|ref controller| which != controller.instance_id());
+                    info!("Open controllers size {:?}", open_controllers.len());
+                    debug_controllers(&open_controllers);
                 }
 
                 Event::Quit { .. } |
@@ -135,13 +156,21 @@ pub fn main() {
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
+
+        
         encoder.clear(&color_view, CLEAR_COLOR);
 
-        minigame.step();
+        minigame.step(&InputState{controllers: vec![]});
         minigame.render(&mut encoder);
 
         encoder.flush(&mut device);
         window.gl_swap_window();
         device.cleanup();
+    }
+}
+
+fn debug_controllers(controllers: &Vec<sdl2::controller::GameController>) {
+    for ref c in controllers {
+        info!("controller {:?}", c.instance_id());
     }
 }

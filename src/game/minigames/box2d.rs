@@ -18,6 +18,8 @@ use self::wrapped2d::b2;
 use self::wrapped2d::handle::TypedHandle;
 use self::wrapped2d::user_data::NoUserData;
 
+use input::InputState;
+
 use game::minigame::MiniGame;
 use ColorFormat;
 
@@ -209,7 +211,7 @@ impl<R> MiniGame<R> for Box2DTestGame<R>
         Box2DTestGame { state: state }
     }
 
-    fn step(&mut self) {
+    fn step(&mut self, input: &InputState) {
         self.state.step();
     }
 
