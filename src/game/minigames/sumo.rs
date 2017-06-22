@@ -5,15 +5,6 @@ use cgmath::{Rotation, Rotation2, Basis2};
 use cgmath::Rad;
 use std::f32;
 use std::i16;
-use std::collections::HashMap;
-
-use gfx;
-use gfx::Encoder;
-use gfx::Factory;
-use gfx::traits::FactoryExt;
-use gfx::Bundle;
-use gfx::Slice;
-use gfx::Resources;
 
 use self::wrapped2d::b2;
 use self::wrapped2d::handle::TypedHandle;
@@ -21,49 +12,26 @@ use self::wrapped2d::user_data::NoUserData;
 
 use input::InputState;
 
+use Components;
+
 use game::minigame::MiniGame;
-use ColorFormat;
 
-gfx_defines!{
-    vertex Vertex {
-        pos: [f32; 2] = "a_Pos",
-        color: [f32; 3] = "a_Color",
-    }
+use draw::Point;
+use draw::Color;
+use draw::DrawSystem;
 
-    constant Transform {
-        transform: [[f32; 4];4] = "u_Transform",
-    }
-    
-    pipeline pipe {
-        vbuf: gfx::VertexBuffer<Vertex> = (),
-        transform: gfx::ConstantBuffer<Transform> = "Transform",        
-        out: gfx::RenderTarget<ColorFormat> = "Target0",
-    }
+struct Shape {
+    vertices: Vec<Point>,
+    color: Color,
 }
 
-
-// Identity matrix
-const TRANSFORM: Transform = Transform {
-    transform: [[1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0]],
-};
-
-// TODO make these common type declarations?
-
-
-struct GameState<R>
-    where R: Resources
-{
-    objects: Vec<GameObject<R>>,
+struct GameState {
+    objects: Vec<GameObject>,
     b2world: b2::World<NoUserData>,
 }
 
-impl<R> GameState<R>
-    where R: Resources
-{
-    fn new() -> GameState<R> {
+impl GameState {
+    fn new() -> GameState {
         let gravity = Point { x: 0., y: -10.0 };
         let mut world = b2::World::<NoUserData>::new(&gravity);
         GameState {
@@ -89,13 +57,10 @@ impl<R> GameState<R>
                         false);
     }
     fn new_draw_object<'a, F>(&'a mut self,
-                              factory: &mut F,
-                              out: &gfx::handle::RenderTargetView<R, ColorFormat>,
+                              draw_system: &DrawSystem,
                               shape: Shape,
                               is_dynamic: bool)
-                              -> &'a GameObject<R>
-        where F: gfx::Factory<R>
-    {
+                              -> &'a GameObject {
         let mut body_def = b2::BodyDef::new();
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
@@ -108,41 +73,19 @@ impl<R> GameState<R>
         fixture_def.friction = 0.3;
         self.b2world.body_mut(body_handle).create_fixture(&body_box, &mut fixture_def);
 
-        let pso = factory.create_pipeline_simple(include_bytes!("../../shader/triangle_150.glslv"),
-                                    include_bytes!("../../shader/triangle_150.glslf"),
-                                    pipe::new())
-            .unwrap();
-
-        let vertex_buffer = factory.create_buffer(shape.vertices.len() as usize,
-                           gfx::buffer::Role::Vertex,
-                           gfx::memory::Usage::Dynamic,
-                           gfx::Bind::empty())
-            .unwrap();
-
-
-        let slice = Slice::new_match_vertex_buffer(&vertex_buffer);
-
-        let transform_buffer = factory.create_constant_buffer(1);
-
-
-        let data = pipe::Data {
-            vbuf: vertex_buffer,
-            transform: transform_buffer,
-            out: out.clone(),
-        };
-
-
         self.objects.push(GameObject {
             drawn_shape: shape,
             body: body_handle,
-            draw_bundle: Some(Bundle::new(slice, pso, data)),
+            components: Components {
+                draw: Some(draw_system.create_draw_object(shape.vertices.len())),
+            },
         });
 
 
         &self.objects[self.objects.len() - 1]
     }
 
-    fn new_object<'a>(&'a mut self, shape: Shape, is_dynamic: bool) -> &'a GameObject<R> {
+    fn new_object<'a>(&'a mut self, shape: Shape, is_dynamic: bool) -> &'a GameObject {
         let mut body_def = b2::BodyDef::new();
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
@@ -158,7 +101,7 @@ impl<R> GameState<R>
         self.objects.push(GameObject {
             drawn_shape: shape,
             body: body_handle,
-            draw_bundle: None,
+            components: Components { draw: None },
         });
 
 
@@ -166,35 +109,21 @@ impl<R> GameState<R>
     }
 }
 
-struct GameObject<R>
-    where R: gfx::Resources
-{
+struct GameObject {
     drawn_shape: Shape,
     // Box2D body, holds object state such as position, velocity, etc
     body: TypedHandle<b2::Body>,
-    draw_bundle: Option<Bundle<R, pipe::Data<R>>>,
+    components: Components,
 }
 
-// impl<R> GameObject<R> {}
-
-pub struct Box2DTestGame<R>
-    where R: gfx::Resources
-{
-    state: GameState<R>,
+pub struct Sumo {
+    state: GameState,
 }
 
-impl<R> MiniGame<R> for Box2DTestGame<R>
-    where R: Resources
-{
-    fn new<F>(factory: &mut F,
-              out: &gfx::handle::RenderTargetView<R, ColorFormat>)
-              -> Box2DTestGame<R>
-        where F: gfx::Factory<R>
-    {
+impl MiniGame for Sumo {
+    fn new(draw: &DrawSystem) -> Sumo {
         let mut state = GameState::new();
-        state.new_draw_object(factory,
-                              out,
-                              Shape {
+        state.new_draw_object(Shape {
                                   vertices: vec![
                                         Point {x: -0.5, y: 0.5},
                                         Point {x: 0.6, y: 0.5},
@@ -202,10 +131,9 @@ impl<R> MiniGame<R> for Box2DTestGame<R>
                                     ],
                                   color: [0.0, 0.0, 1.0],
                               },
-                              // Dynamic object:
                               true);
         state.add_borders();
-        Box2DTestGame { state: state }
+        Sumo { state: state }
     }
 
     fn step(&mut self, input: &InputState) {
@@ -217,39 +145,23 @@ impl<R> MiniGame<R> for Box2DTestGame<R>
         }
 
         self.state.step(b2::Vec2 { x: x, y: y });
-    }
 
-    fn resize(&mut self, new_target: &gfx::handle::RenderTargetView<R, ColorFormat> )
-    {
-        for mut object in &mut self.state.objects {
-            match object.draw_bundle {
-                Some(ref mut bundle) => {
-                    bundle.data.out = new_target.clone();
-                }
-                None => (),
-            }
-        }
-    }
-
-    fn render<C>(&self, encoder: &mut Encoder<R, C>) -> ()
-        where C: gfx::CommandBuffer<R>
-    {
         for object in &self.state.objects {
             let shape = &object.drawn_shape;
             let body = self.state.b2world.body_mut(object.body);
             let transform = body.transform();
-            let new_verts = shape.gfx_vertices(transform);
+            object.transform = transform;
+        }
+    }
 
-            match object.draw_bundle {
-                Some(ref bundle) => {
-                    encoder.update_buffer(&bundle.data.transform, &[TRANSFORM], 0);
-                    encoder.update_buffer(&bundle.data.vbuf, &new_verts[..], 0)
-                        .expect("Failed to update vertex buffer");
-                    bundle.encode(encoder)
+    fn render<C>(&self, draw_system: &DrawSystem) -> () {
+        for object in &self.state.objects {
+            match object.components.draw {
+                Some(ref draw_object) => {
+                    draw_system.draw(draw_object);
                 }
                 None => (),
             }
-
         }
     }
 }

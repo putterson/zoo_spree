@@ -16,37 +16,19 @@ extern crate cgmath;
 mod config;
 mod input;
 mod game;
+mod draw;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
 
-use sdl2::video::GLProfile;
-
 use input::{InputState, ControllerState};
 
+use draw::DrawSystem;
+use draw::DrawObject;
+
 use game::minigame::MiniGame;
-use game::minigames::box2d::Box2DTestGame;
-use game::minigames::triangle_buffers::Triangle;
-
-pub type ColorFormat = gfx::format::Rgba8;
-pub type DepthFormat = gfx::format::DepthStencil;
-
-gfx_defines!{
-    vertex Vertex {
-        pos: [f32; 2] = "a_Pos",
-        color: [f32; 3] = "a_Color",
-    }
-
-    constant Transform {
-        transform: [[f32; 4];4] = "u_Transform",
-    }
-
-    pipeline pipe {
-        vbuf: gfx::VertexBuffer<Vertex> = (),
-        transform: gfx::ConstantBuffer<Transform> = "Transform",
-        out: gfx::RenderTarget<ColorFormat> = "Target0",
-    }
-}
+use game::minigames::sumo::Sumo;
+// use game::minigames::triangle_buffers::Triangle;
 
 use sdl2::event::Event;
 use sdl2::event::WindowEvent;
@@ -54,8 +36,6 @@ use sdl2::keyboard::Keycode;
 use std::time::Duration;
 
 use gfx_core::format::{DepthStencil, Rgba8};
-
-const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
 
 pub fn main() {
     // Initialize logging
@@ -71,43 +51,8 @@ pub fn main() {
 
     let sdl_context = sdl2::init().unwrap();
 
-    // Initialize video
-    let video_subsystem = sdl_context.video().unwrap();
-
-    // let gl_attr = video_subsystem.gl_attr();
-
-    // // Don't use deprecated OpenGL functions
-    // gl_attr.set_context_profile(GLProfile::Core);
-
-    // // Set the context into debug mode
-    // gl_attr.set_context_flags().debug().set();
-
-    // // Set the OpenGL context version (OpenGL 3.2)
-    // gl_attr.set_context_version(3, 2);
-
-    let display_mode = video_subsystem.current_display_mode(0).unwrap();
-
-    config.video.set_auto_resolution(display_mode.w as u32, display_mode.h as u32);
-
-    let config = config;
-
-    let w = config.video.x_resolution();
-    let h = config.video.y_resolution();
-
-    if config.video.auto_resolution() {
-        info!("Using current (scaled) resolution {:?}x{:?}", w, h);
-    }
-
-    let mut builder = video_subsystem.window("Zoo Spree", w, h);
-    if config.video.fullscreen {
-        builder.fullscreen();
-    }
-
-
-    let (mut window, mut glcontext, mut device, mut factory, mut color_view, mut depth_view) =
-        gfx_window_sdl::init::<Rgba8, DepthStencil>(builder).expect("gfx_window_sdl::init failed!");
-
-    let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
+    // Initialize Draw system
+    let draw_system = DrawSystem::new(sdl_context, config);
 
     // Initialize controller
     let controller_subsystem = sdl_context.game_controller().unwrap();
@@ -123,7 +68,7 @@ pub fn main() {
 
     // The active minigame
     // let mut minigame : Triangle = MiniGame::new();
-    let mut minigame : Box2DTestGame<_> = MiniGame::new(&mut factory, &color_view);
+    let mut minigame : Sumo = MiniGame::new(&draw_system);
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -158,9 +103,7 @@ pub fn main() {
                     match win_event {
                         WindowEvent::Resized(width, height) => {
                             info!("Window resized {:?}x{:?}", width, height);
-
-                            gfx_window_sdl::update_views(&window, &mut color_view, &mut depth_view);
-                            minigame.resize(&color_view);
+                            draw_system.resize();
                         }
                         _ => {}
                     }
@@ -173,16 +116,13 @@ pub fn main() {
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
 
-
-        
-        encoder.clear(&color_view, CLEAR_COLOR);
+        draw_system.pre_render();
 
         minigame.step(&input_state);
-        minigame.render(&mut encoder);
+        minigame.render(&draw_system);
 
-        encoder.flush(&mut device);
-        window.gl_swap_window();
-        device.cleanup();
+        draw_system.post_render();
+
     }
 }
 
@@ -190,4 +130,8 @@ fn debug_controllers(controllers: &Vec<sdl2::controller::GameController>) {
     for ref c in controllers {
         debug!("controller {:?}", c.instance_id());
     }
+}
+
+struct Components {
+    draw: Option<DrawObject>,
 }

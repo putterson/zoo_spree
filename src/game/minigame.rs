@@ -1,17 +1,10 @@
-use gfx::Factory;
-use gfx::Encoder;
-use gfx;
-
 use input::InputState;
+use draw::DrawSystem;
 
-use ColorFormat;
-
-pub trait MiniGame<R>
-    where R: gfx::Resources
+pub trait MiniGame
           
 {
-    fn new<F>(factory: &mut F, out: &gfx::handle::RenderTargetView<R, ColorFormat>) -> Self where F: gfx::Factory<R>;
+    fn new(draw: &DrawSystem) -> Self;
     fn step(&mut self, input: &InputState) -> ();
-    fn resize(&mut self, new_target: &gfx::handle::RenderTargetView<R, ColorFormat> ) -> ();
-    fn render<C>(&self, encoder: &mut Encoder<R, C>) -> () where C: gfx::CommandBuffer<R>;
+    fn render(&self, draw: &DrawSystem) -> ();
 }
