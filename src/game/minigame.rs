@@ -4,7 +4,7 @@ use draw::DrawSystem;
 pub trait MiniGame
           
 {
-    fn new(draw: &DrawSystem) -> Self;
+    fn new(draw: &mut DrawSystem) -> Self;
     fn step(&mut self, input: &InputState) -> ();
-    fn render(&self, draw: &DrawSystem) -> ();
+    fn render(&mut self, draw: &mut DrawSystem) -> ();
 }

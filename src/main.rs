@@ -54,7 +54,7 @@ pub fn main() {
     let sdl_context = sdl2::init().unwrap();
 
     // Initialize Draw system
-    let mut draw_system = DrawSystem::new(sdl_context, config);
+    let mut draw_system = DrawSystem::new(&sdl_context, &mut config.video);
 
     // Initialize controller
     let controller_subsystem = sdl_context.game_controller().unwrap();
@@ -70,7 +70,7 @@ pub fn main() {
 
     // The active minigame
     // let mut minigame : Triangle = MiniGame::new();
-    let mut minigame : Sumo = MiniGame::new(&draw_system);
+    let mut minigame : Sumo = MiniGame::new(&mut draw_system);
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -121,7 +121,7 @@ pub fn main() {
         draw_system.pre_render();
 
         minigame.step(&input_state);
-        minigame.render(&draw_system);
+        minigame.render(&mut draw_system);
 
         draw_system.post_render();
 

@@ -20,10 +20,12 @@ use gfx_core::handle::{RenderTargetView, DepthStencilView};
 
 use cgmath;
 
-use config::Config;
+use config::VideoConfig;
+use physics::B2Point;
 
 pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
+
 
 gfx_defines!{
     vertex Vertex {
@@ -43,26 +45,47 @@ gfx_defines!{
 }
 
 pub type Point = Vertex;
+impl Point {
+    pub fn from_point_and_color(physics_point: &B2Point, color: Color) -> Point {
+        return Point {
+            pos: [physics_point.x, physics_point.y],
+            color: color,
+        };
+    }
+}
+
 pub type Color = [f32; 3];
 
 
 const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
 
-pub struct DrawObject
-{
+// Identity matrix
+const TRANSFORM: Transform = Transform {
+    transform: [[1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0]],
+};
+
+pub struct DrawObject {
     vertices: Vec<Point>,
     translation: [f32; 2],
     rotation: f32,
+    pub transform: Transform,
     color: Color,
     bundle: Bundle<Resources, pipe::Data<Resources>>,
 }
 
 impl DrawObject {
-    fn new(vertices: Vec<Point>, color: Color, bundle: Bundle<Resources, pipe::Data<Resources>>) -> DrawObject {
+    fn new(vertices: Vec<Point>,
+           color: Color,
+           bundle: Bundle<Resources, pipe::Data<Resources>>)
+           -> DrawObject {
         DrawObject {
             vertices: vertices,
             translation: [0.0, 0.0],
             rotation: 0.0,
+            transform: TRANSFORM,
             color: color,
             bundle: bundle,
         }
@@ -85,8 +108,7 @@ impl DrawObject {
     }
 }
 
-pub struct DrawSystem
-{
+pub struct DrawSystem {
     window: Window,
     glcontext: GLContext,
     device: GLDevice,
@@ -97,9 +119,8 @@ pub struct DrawSystem
     resize: bool,
 }
 
-impl DrawSystem
-{
-    pub fn new(sdl_context: Sdl, config: Config) -> DrawSystem {
+impl DrawSystem {
+    pub fn new(sdl_context: &Sdl, config: &mut VideoConfig) -> DrawSystem {
 
         // Initialize video
         let video_subsystem = sdl_context.video().unwrap();
@@ -117,19 +138,19 @@ impl DrawSystem
 
         let display_mode = video_subsystem.current_display_mode(0).unwrap();
 
-        config.video.set_auto_resolution(display_mode.w as u32, display_mode.h as u32);
+        config.set_auto_resolution(display_mode.w as u32, display_mode.h as u32);
 
         let config = config;
 
-        let w = config.video.x_resolution();
-        let h = config.video.y_resolution();
+        let w = config.x_resolution();
+        let h = config.y_resolution();
 
-        if config.video.auto_resolution() {
+        if config.auto_resolution() {
             info!("Using current (scaled) resolution {:?}x{:?}", w, h);
         }
 
         let mut builder = video_subsystem.window("Zoo Spree", w, h);
-        if config.video.fullscreen {
+        if config.fullscreen {
             builder.fullscreen();
         }
 
@@ -152,7 +173,7 @@ impl DrawSystem
         }
     }
 
-    pub fn create_draw_object(&self, vertex_count: usize) -> DrawObject {
+    pub fn create_draw_object(&mut self, vertices: Vec<Vertex>, vertex_count: usize) -> DrawObject {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
@@ -181,7 +202,7 @@ impl DrawSystem
 
 
 
-        return DrawObject::new(vec![], [1.0, 2.0, 3.0], Bundle::new(slice, pso, data));
+        return DrawObject::new(vertices, [1.0, 2.0, 3.0], Bundle::new(slice, pso, data));
     }
 
     pub fn resize(&mut self) -> () {
@@ -189,7 +210,7 @@ impl DrawSystem
         self.resize = true;
     }
 
-    pub fn pre_render(&self) -> () {
+    pub fn pre_render(&mut self) -> () {
         self.encoder.clear(&self.color_view, CLEAR_COLOR);
     }
 
@@ -200,12 +221,10 @@ impl DrawSystem
         self.resize = false;
     }
 
-    pub fn draw(&self, object: &mut DrawObject) -> () {
-        // encoder.update_buffer(&bundle.data.transform, &[object.], 0);
+    pub fn draw(&mut self, object: &mut DrawObject) -> () {
+        self.encoder.update_buffer(&object.bundle.data.transform, &[object.transform], 0);
         self.encoder
-            .update_buffer(&object.bundle.data.vbuf,
-                           &object.gfx_vertices()[..],
-                           0)
+            .update_buffer(&object.bundle.data.vbuf, &object.gfx_vertices()[..], 0)
             .expect("Failed to update vertex buffer");
         object.bundle.encode(&mut self.encoder)
     }
