@@ -20,6 +20,8 @@ mod game;
 use gfx::traits::FactoryExt;
 use gfx::Device;
 
+use sdl2::video::GLProfile;
+
 use input::{InputState, ControllerState};
 
 use game::minigame::MiniGame;
@@ -35,13 +37,19 @@ gfx_defines!{
         color: [f32; 3] = "a_Color",
     }
 
+    constant Transform {
+        transform: [[f32; 4];4] = "u_Transform",
+    }
+
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
+        transform: gfx::ConstantBuffer<Transform> = "Transform",
         out: gfx::RenderTarget<ColorFormat> = "Target0",
     }
 }
 
 use sdl2::event::Event;
+use sdl2::event::WindowEvent;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
 
@@ -66,6 +74,16 @@ pub fn main() {
     // Initialize video
     let video_subsystem = sdl_context.video().unwrap();
 
+    // let gl_attr = video_subsystem.gl_attr();
+
+    // // Don't use deprecated OpenGL functions
+    // gl_attr.set_context_profile(GLProfile::Core);
+
+    // // Set the context into debug mode
+    // gl_attr.set_context_flags().debug().set();
+
+    // // Set the OpenGL context version (OpenGL 3.2)
+    // gl_attr.set_context_version(3, 2);
 
     let display_mode = video_subsystem.current_display_mode(0).unwrap();
 
@@ -86,7 +104,7 @@ pub fn main() {
     }
 
 
-    let (window, glcontext, mut device, mut factory, color_view, depth_view) =
+    let (mut window, mut glcontext, mut device, mut factory, mut color_view, mut depth_view) =
         gfx_window_sdl::init::<Rgba8, DepthStencil>(builder).expect("gfx_window_sdl::init failed!");
 
     let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
@@ -101,16 +119,7 @@ pub fn main() {
 
     let mut open_controllers: Vec<sdl2::controller::GameController> = vec![];
     let mut input_state = InputState { controllers: vec![] };
-    
-    // let num_joysticks = controller_subsystem.num_joysticks().unwrap();
-    // for id in 0..num_joysticks {
-    //     if controller_subsystem.is_game_controller(id) {
-    //         let controller = controller_subsystem.open(id).unwrap();
-    //         open_controllers.push(controller);
-    //     }
-    // }
 
-    
 
     // The active minigame
     // let mut minigame : Triangle = MiniGame::new();
@@ -126,10 +135,6 @@ pub fn main() {
                 Event::ControllerButtonUp { .. } |
                 Event::ControllerAxisMotion { .. } => {
                     input_state.update(event);
-
-                    for c in input_state.controllers.iter() {
-                        info!("{:?}", c);
-                    }
                 }
                 Event::ControllerDeviceAdded { which, .. } => {
                     info!("Controller {:?} Added", which);
@@ -147,6 +152,18 @@ pub fn main() {
                     open_controllers.retain(|ref controller| which != controller.instance_id());
                     info!("Open controllers size {:?}", open_controllers.len());
                     debug_controllers(&open_controllers);
+                }
+
+                Event::Window { win_event, .. } => {
+                    match win_event {
+                        WindowEvent::Resized(width, height) => {
+                            info!("Window resized {:?}x{:?}", width, height);
+
+                            gfx_window_sdl::update_views(&window, &mut color_view, &mut depth_view);
+                            minigame.resize(&color_view);
+                        }
+                        _ => {}
+                    }
                 }
 
                 Event::Quit { .. } |

@@ -98,6 +98,11 @@ impl<R> MiniGame<R> for Triangle<R>
         }
     }
 
+    fn resize(&mut self, new_target: &gfx::handle::RenderTargetView<R, ColorFormat> )
+    {
+        self.data.out = new_target.clone();
+    }
+
     fn render<C>(&self, encoder: &mut Encoder<R, C>) -> ()
         where C: gfx::CommandBuffer<R>
     {

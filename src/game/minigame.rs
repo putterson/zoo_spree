@@ -11,7 +11,7 @@ pub trait MiniGame<R>
           
 {
     fn new<F>(factory: &mut F, out: &gfx::handle::RenderTargetView<R, ColorFormat>) -> Self where F: gfx::Factory<R>;
-
     fn step(&mut self, input: &InputState) -> ();
+    fn resize(&mut self, new_target: &gfx::handle::RenderTargetView<R, ColorFormat> ) -> ();
     fn render<C>(&self, encoder: &mut Encoder<R, C>) -> () where C: gfx::CommandBuffer<R>;
 }

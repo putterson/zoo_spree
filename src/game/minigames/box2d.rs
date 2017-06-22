@@ -30,11 +30,25 @@ gfx_defines!{
         color: [f32; 3] = "a_Color",
     }
 
+    constant Transform {
+        transform: [[f32; 4];4] = "u_Transform",
+    }
+    
     pipeline pipe {
         vbuf: gfx::VertexBuffer<Vertex> = (),
+        transform: gfx::ConstantBuffer<Transform> = "Transform",        
         out: gfx::RenderTarget<ColorFormat> = "Target0",
     }
 }
+
+
+// Identity matrix
+const TRANSFORM: Transform = Transform {
+    transform: [[1.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0, 1.0]],
+};
 
 // TODO make these common type declarations?
 type Point = b2::Vec2;
@@ -117,8 +131,8 @@ impl<R> GameState<R>
         fixture_def.friction = 0.3;
         self.b2world.body_mut(body_handle).create_fixture(&body_box, &mut fixture_def);
 
-        let pso = factory.create_pipeline_simple(include_bytes!("../../shader/triangle_120.glslv"),
-                                    include_bytes!("../../shader/triangle_120.glslf"),
+        let pso = factory.create_pipeline_simple(include_bytes!("../../shader/triangle_150.glslv"),
+                                    include_bytes!("../../shader/triangle_150.glslf"),
                                     pipe::new())
             .unwrap();
 
@@ -131,8 +145,12 @@ impl<R> GameState<R>
 
         let slice = Slice::new_match_vertex_buffer(&vertex_buffer);
 
+        let transform_buffer = factory.create_constant_buffer(1);
+
+
         let data = pipe::Data {
             vbuf: vertex_buffer,
+            transform: transform_buffer,
             out: out.clone(),
         };
 
@@ -214,15 +232,26 @@ impl<R> MiniGame<R> for Box2DTestGame<R>
     }
 
     fn step(&mut self, input: &InputState) {
-        let mut x : f32 = 0.0;
-        let mut y : f32 = 0.0;
+        let mut x: f32 = 0.0;
+        let mut y: f32 = 0.0;
         if input.controllers.len() > 0 {
             x = (input.controllers[0].axis_l_x as f32 / i16::MAX as f32) * 11.0;
             y = (input.controllers[0].axis_l_y as f32 / i16::MAX as f32) * 11.0;
-            println!("Applying force! {:?}, {:?}", x, y);
         }
 
-        self.state.step(b2::Vec2{x: x, y: y});
+        self.state.step(b2::Vec2 { x: x, y: y });
+    }
+
+    fn resize(&mut self, new_target: &gfx::handle::RenderTargetView<R, ColorFormat> )
+    {
+        for mut object in &mut self.state.objects {
+            match object.draw_bundle {
+                Some(ref mut bundle) => {
+                    bundle.data.out = new_target.clone();
+                }
+                None => (),
+            }
+        }
     }
 
     fn render<C>(&self, encoder: &mut Encoder<R, C>) -> ()
@@ -236,6 +265,7 @@ impl<R> MiniGame<R> for Box2DTestGame<R>
 
             match object.draw_bundle {
                 Some(ref bundle) => {
+                    encoder.update_buffer(&bundle.data.transform, &[TRANSFORM], 0);
                     encoder.update_buffer(&bundle.data.vbuf, &new_verts[..], 0)
                         .expect("Failed to update vertex buffer");
                     bundle.encode(encoder)
