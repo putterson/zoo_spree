@@ -5,9 +5,9 @@ authors = ["Pat Goebel <putterson@gmail.com>"]
 
 [dependencies]
 sdl2 = "0.29"
-gfx = "0.16"
-gfx_core = "0.7"
-gfx_window_sdl = "0.6"
+gfx = { path = "dependencies/gfx/src/render" }
+gfx_core =  { path = "dependencies/gfx/src/core" }
+gfx_window_sdl = { path = "dependencies/gfx/src/window/sdl" } 
 cgmath = "0.14"
 log = "0.3"
 env_logger = "*"
