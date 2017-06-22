@@ -16,12 +16,13 @@ use Components;
 
 use game::minigame::MiniGame;
 
+use physics::B2Point;
 use draw::Point;
 use draw::Color;
 use draw::DrawSystem;
 
 struct Shape {
-    vertices: Vec<Point>,
+    vertices: Vec<B2Point>,
     color: Color,
 }
 
@@ -32,7 +33,7 @@ struct GameState {
 
 impl GameState {
     fn new() -> GameState {
-        let gravity = Point { x: 0., y: -10.0 };
+        let gravity = B2Point { x: 0., y: -10.0 };
         let mut world = b2::World::<NoUserData>::new(&gravity);
         GameState {
             objects: vec![],
@@ -46,9 +47,9 @@ impl GameState {
     fn add_borders(&mut self) {
         let shape = Shape {
             vertices: vec![
-                Point {x: -1.0, y: -1.0},
-                Point {x: 1.0, y: -1.0},
-                Point {x: 0.0, y: -2.0},
+                B2Point {x: -1.0, y: -1.0},
+                B2Point {x: 1.0, y: -1.0},
+                B2Point {x: 0.0, y: -2.0},
             ],
             color: [0.0, 1.0, 0.0],
         };
@@ -56,7 +57,7 @@ impl GameState {
                         // Static object
                         false);
     }
-    fn new_draw_object<'a, F>(&'a mut self,
+    fn new_draw_object<'a>(&'a mut self,
                               draw_system: &DrawSystem,
                               shape: Shape,
                               is_dynamic: bool)
@@ -123,11 +124,13 @@ pub struct Sumo {
 impl MiniGame for Sumo {
     fn new(draw: &DrawSystem) -> Sumo {
         let mut state = GameState::new();
-        state.new_draw_object(Shape {
+        state.new_draw_object(
+            draw,
+            Shape {
                                   vertices: vec![
-                                        Point {x: -0.5, y: 0.5},
-                                        Point {x: 0.6, y: 0.5},
-                                        Point {x: 0.0, y: 0.0},
+                                        B2Point {x: -0.5, y: 0.5},
+                                        B2Point {x: 0.6, y: 0.5},
+                                        B2Point {x: 0.0, y: 0.0},
                                     ],
                                   color: [0.0, 0.0, 1.0],
                               },
@@ -150,14 +153,14 @@ impl MiniGame for Sumo {
             let shape = &object.drawn_shape;
             let body = self.state.b2world.body_mut(object.body);
             let transform = body.transform();
-            object.transform = transform;
+            // object.transform = transform;
         }
     }
 
-    fn render<C>(&self, draw_system: &DrawSystem) -> () {
+    fn render(&self, draw_system: &DrawSystem) -> () {
         for object in &self.state.objects {
             match object.components.draw {
-                Some(ref draw_object) => {
+                Some(ref mut draw_object) => {
                     draw_system.draw(draw_object);
                 }
                 None => (),

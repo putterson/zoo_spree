@@ -9,6 +9,7 @@ extern crate serde_derive;
 extern crate gfx;
 extern crate gfx_core;
 extern crate gfx_window_sdl;
+extern crate gfx_device_gl;
 extern crate sdl2;
 
 extern crate cgmath;
@@ -17,6 +18,7 @@ mod config;
 mod input;
 mod game;
 mod draw;
+mod physics;
 
 use gfx::traits::FactoryExt;
 use gfx::Device;
@@ -52,7 +54,7 @@ pub fn main() {
     let sdl_context = sdl2::init().unwrap();
 
     // Initialize Draw system
-    let draw_system = DrawSystem::new(sdl_context, config);
+    let mut draw_system = DrawSystem::new(sdl_context, config);
 
     // Initialize controller
     let controller_subsystem = sdl_context.game_controller().unwrap();

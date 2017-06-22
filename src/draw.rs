@@ -1,14 +1,21 @@
 use gfx;
 use gfx::Encoder;
+// use gfx::CommandBuffer;
 use gfx::traits::FactoryExt;
 use gfx::Slice;
-use gfx::Resources;
+// use gfx::Resources;
 use gfx::Bundle;
+
+use gfx_core::Device;
 
 use sdl2::video::{Window, GLContext};
 use sdl2::Sdl;
-use gfx_window_sdl::{Device, Factory};
+use gfx_window_sdl::Factory as SDLFactory;
+use gfx_core::Factory;
 use gfx_window_sdl;
+use gfx_device_gl::Resources;
+use gfx_device_gl::Device as GLDevice;
+use gfx_device_gl::CommandBuffer;
 use gfx_core::handle::{RenderTargetView, DepthStencilView};
 
 use cgmath;
@@ -35,22 +42,23 @@ gfx_defines!{
     }
 }
 
-pub type Point = cgmath::Point3;
+pub type Point = Vertex;
 pub type Color = [f32; 3];
 
 
 const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
 
-pub struct DrawObject {
+pub struct DrawObject
+{
     vertices: Vec<Point>,
     translation: [f32; 2],
     rotation: f32,
     color: Color,
-    bundle: Bundle<_, _>,
+    bundle: Bundle<Resources, pipe::Data<Resources>>,
 }
 
 impl DrawObject {
-    fn new(vertices: Vec<Point>, color: Color, bundle: Bundle) -> DrawObject {
+    fn new(vertices: Vec<Point>, color: Color, bundle: Bundle<Resources, pipe::Data<Resources>>) -> DrawObject {
         DrawObject {
             vertices: vertices,
             translation: [0.0, 0.0],
@@ -61,7 +69,7 @@ impl DrawObject {
     }
 
     // , transform: &b2::Transform
-    fn gfx_vertices(&self) -> Vec<Vertex> {
+    fn gfx_vertices(&self) -> Vec<Point> {
         self.vertices
             .clone()
         // .into_iter()
@@ -77,20 +85,21 @@ impl DrawObject {
     }
 }
 
-pub struct DrawSystem<R> where
-R: Resources, C: Buffer<R> {
+pub struct DrawSystem
+{
     window: Window,
     glcontext: GLContext,
-    device: Device,
-    factory: Factory,
-    color_view: RenderTargetView<R, ColorFormat>,
-    depth_view: DepthStencilView<R, DepthFormat>,
-    encoder: gfx::Encoder<_, _>,
+    device: GLDevice,
+    factory: SDLFactory,
+    color_view: RenderTargetView<Resources, ColorFormat>,
+    depth_view: DepthStencilView<Resources, DepthFormat>,
+    encoder: Encoder<Resources, CommandBuffer>,
     resize: bool,
 }
 
-impl DrawSystem {
-    fn new(sdl_context: Sdl, config: Config) -> DrawSystem {
+impl DrawSystem
+{
+    pub fn new(sdl_context: Sdl, config: Config) -> DrawSystem {
 
         // Initialize video
         let video_subsystem = sdl_context.video().unwrap();
@@ -139,10 +148,11 @@ impl DrawSystem {
             color_view: color_view,
             depth_view: depth_view,
             encoder: encoder,
+            resize: true,
         }
     }
 
-    fn create_draw_object(&self, vertex_count: usize) -> DrawObject {
+    pub fn create_draw_object(&self, vertex_count: usize) -> DrawObject {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
@@ -174,26 +184,29 @@ impl DrawSystem {
         return DrawObject::new(vec![], [1.0, 2.0, 3.0], Bundle::new(slice, pso, data));
     }
 
-    fn resize(&mut self) -> () {
+    pub fn resize(&mut self) -> () {
         gfx_window_sdl::update_views(&self.window, &mut self.color_view, &mut self.depth_view);
         self.resize = true;
     }
 
-    fn pre_render(&self) -> () {
+    pub fn pre_render(&self) -> () {
         self.encoder.clear(&self.color_view, CLEAR_COLOR);
     }
 
-    fn post_render(&mut self) -> () {
+    pub fn post_render(&mut self) -> () {
         self.encoder.flush(&mut self.device);
         self.window.gl_swap_window();
         self.device.cleanup();
         self.resize = false;
     }
 
-    fn draw(&self, object: &mut DrawObject) -> () {
+    pub fn draw(&self, object: &mut DrawObject) -> () {
         // encoder.update_buffer(&bundle.data.transform, &[object.], 0);
-        self.encoder.update_buffer(&object.bundle.data.vbuf, &object.gfx_vertices(object.transform), 0)
+        self.encoder
+            .update_buffer(&object.bundle.data.vbuf,
+                           &object.gfx_vertices()[..],
+                           0)
             .expect("Failed to update vertex buffer");
-        object.bundle.encode(self.encoder)
+        object.bundle.encode(&mut self.encoder)
     }
 }
