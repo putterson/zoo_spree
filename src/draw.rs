@@ -10,6 +10,8 @@ use gfx_core::Device;
 
 use sdl2::video::{Window, GLContext};
 use sdl2::Sdl;
+use sdl2::video::GLProfile;
+
 use gfx_window_sdl::Factory as SDLFactory;
 use gfx_core::Factory;
 use gfx_window_sdl;
@@ -115,16 +117,16 @@ impl DrawSystem {
         // Initialize video
         let video_subsystem = sdl_context.video().unwrap();
 
-        // let gl_attr = video_subsystem.gl_attr();
+        let gl_attr = video_subsystem.gl_attr();
 
         // // Don't use deprecated OpenGL functions
-        // gl_attr.set_context_profile(GLProfile::Core);
+        gl_attr.set_context_profile(GLProfile::Core);
 
         // // Set the context into debug mode
         // gl_attr.set_context_flags().debug().set();
 
-        // // Set the OpenGL context version (OpenGL 3.2)
-        // gl_attr.set_context_version(3, 2);
+        // // Set the OpenGL context version (OpenGL 3.3)
+        gl_attr.set_context_version(3, 3);
 
         let display_mode = video_subsystem.current_display_mode(0).unwrap();
 

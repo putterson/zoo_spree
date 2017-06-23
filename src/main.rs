@@ -28,6 +28,9 @@ use input::{InputState, ControllerState};
 use draw::DrawSystem;
 use draw::DrawObject;
 
+use physics::PhysicsObject;
+use physics::PhysicsSystem;
+
 use game::minigame::MiniGame;
 use game::minigames::sumo::Sumo;
 // use game::minigames::triangle_buffers::Triangle;
@@ -56,6 +59,9 @@ pub fn main() {
     // Initialize Draw system
     let mut draw_system = DrawSystem::new(&sdl_context, &mut config.video);
 
+    // Init Physics system
+    let mut physics_system = PhysicsSystem::new();
+
     // Initialize controller
     let controller_subsystem = sdl_context.game_controller().unwrap();
 
@@ -70,7 +76,7 @@ pub fn main() {
 
     // The active minigame
     // let mut minigame : Triangle = MiniGame::new();
-    let mut minigame : Sumo = MiniGame::new(&mut draw_system);
+    let mut minigame : Sumo = MiniGame::new(&mut draw_system, &mut physics_system);
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -120,7 +126,7 @@ pub fn main() {
 
         draw_system.pre_render();
 
-        minigame.step(&input_state);
+        minigame.step(&input_state, &mut physics_system);
         minigame.render(&mut draw_system);
 
         draw_system.post_render();
@@ -136,4 +142,5 @@ fn debug_controllers(controllers: &Vec<sdl2::controller::GameController>) {
 
 struct Components {
     draw: Option<DrawObject>,
+    physics: Option<PhysicsObject>
 }
