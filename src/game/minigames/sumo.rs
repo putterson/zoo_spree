@@ -35,7 +35,7 @@ struct GameState {
 
 impl GameState {
     fn new() -> GameState {
-        let gravity = B2Point { x: 0., y: -10.0 };
+        let gravity = B2Point { x: 0., y: 0. };
         let mut world = b2::World::<NoUserData>::new(&gravity);
         GameState {
             objects: vec![],
@@ -46,24 +46,12 @@ impl GameState {
         self.b2world.step(1. / 60., 6, 2);
         self.b2world.body_mut(self.objects[0].body).apply_force_to_center(&force, true);
     }
-    fn add_borders(&mut self) {
-        let shape = Shape {
-            vertices: vec![
-                B2Point {x: -1.0, y: -1.0},
-                B2Point {x: 1.0, y: -1.0},
-                B2Point {x: 0.0, y: -2.0},
-            ],
-            color: [0.0, 1.0, 0.0],
-        };
-        self.new_object(shape,
-                        // Static object
-                        false);
-    }
+
     fn new_draw_object<'a>(&'a mut self,
-                              draw_system: &mut DrawSystem,
-                              shape: Shape,
-                              is_dynamic: bool)
-                              -> &'a GameObject {
+                           draw_system: &mut DrawSystem,
+                           shape: Shape,
+                           is_dynamic: bool)
+                           -> &'a GameObject {
         let mut body_def = b2::BodyDef::new();
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
@@ -72,43 +60,19 @@ impl GameState {
         let body_box = b2::PolygonShape::new_with(&shape.vertices);
 
         let mut fixture_def = b2::FixtureDef::new();
-        fixture_def.density = 1.;
+        fixture_def.density = 0.1;
         fixture_def.friction = 0.3;
         self.b2world.body_mut(body_handle).create_fixture(&body_box, &mut fixture_def);
 
         let length = shape.vertices.len();
         let color = shape.color;
-        let vertices = shape.vertices.iter().map(|v| Point::from_point_and_color(v, color)).collect();
+        let vertices =
+            shape.vertices.iter().map(|v| Point::from_point_and_color(v, color)).collect();
 
         self.objects.push(GameObject {
             drawn_shape: shape,
             body: body_handle,
-            components: Components {
-                draw: Some(draw_system.create_draw_object(vertices, length)),
-            },
-        });
-
-
-        &self.objects[self.objects.len() - 1]
-    }
-
-    fn new_object(&mut self, shape: Shape, is_dynamic: bool) -> &GameObject {
-        let mut body_def = b2::BodyDef::new();
-        if is_dynamic {
-            body_def.body_type = b2::BodyType::Dynamic;
-        }
-        let body_handle: TypedHandle<b2::Body> = self.b2world.create_body(&body_def);
-        let body_box = b2::PolygonShape::new_with(&shape.vertices);
-
-        let mut fixture_def = b2::FixtureDef::new();
-        fixture_def.density = 1.;
-        fixture_def.friction = 0.3;
-        self.b2world.body_mut(body_handle).create_fixture(&body_box, &mut fixture_def);
-
-        self.objects.push(GameObject {
-            drawn_shape: shape,
-            body: body_handle,
-            components: Components { draw: None },
+            components: Components { draw: Some(draw_system.create_draw_object(vertices, length)) },
         });
 
 
@@ -131,19 +95,60 @@ impl MiniGame for Sumo {
     fn new(draw: &mut DrawSystem) -> Sumo {
         let mut state = GameState::new();
         for i in 1..10 {
-            state.new_draw_object(
-                draw,
-                Shape {
-                                    vertices: vec![
-                                            B2Point {x: -0.1, y: 0.1},
-                                            B2Point {x: 0.11, y: 0.1},
+            state.new_draw_object(draw,
+                                  Shape {
+                                      vertices: vec![
                                             B2Point {x: 0.0, y: 0.0},
+                                            B2Point {x: 0.0, y: 2.0},
+                                            B2Point {x: 2.0, y: 0.0},
+                                            B2Point {x: 3.0, y: 3.0},
+                                            B2Point {x: 0.0, y: 2.0},
+                                            B2Point {x: 2.0, y: 0.0},
                                         ],
-                                    color: [0.0, 0.0, 1.0],
-                                },
-                                true);
+                                      color: [0.0, 0.0, 1.0],
+                                  },
+                                  true);
         }
-        state.add_borders();
+        state.new_draw_object(draw,
+                              Shape {
+                                  vertices: vec![
+                                            B2Point {x: -9.0, y: -9.0},
+                                            B2Point {x: -9.0, y: 9.0},
+                                            B2Point {x: -15.0, y: 0.0},
+                                        ],
+                                  color: [1.0, 0.0, 0.0],
+                              },
+                              false);
+        state.new_draw_object(draw,
+                              Shape {
+                                  vertices: vec![
+                                            B2Point {x: 9.0, y: -9.0},
+                                            B2Point {x: 9.0, y: 9.0},
+                                            B2Point {x: 15.0, y: 0.0},
+                                        ],
+                                  color: [1.0, 0.0, 0.0],
+                              },
+                              false);
+        state.new_draw_object(draw,
+                              Shape {
+                                  vertices: vec![
+                                            B2Point {x: -9.0, y: 9.0},
+                                            B2Point {x: 9.0, y: 9.0},
+                                            B2Point {x: 0.0, y: 15.0},
+                                        ],
+                                  color: [1.0, 0.0, 0.0],
+                              },
+                              false);
+        state.new_draw_object(draw,
+                              Shape {
+                                  vertices: vec![
+                                            B2Point {x: 9.0, y: -9.0},
+                                            B2Point {x: -9.0, y: -9.0},
+                                            B2Point {x: 0.0, y: -15.0},
+                                        ],
+                                  color: [1.0, 0.0, 0.0],
+                              },
+                              false);
 
         Sumo { state: state }
     }
@@ -152,8 +157,8 @@ impl MiniGame for Sumo {
         let mut x: f32 = 0.0;
         let mut y: f32 = 0.0;
         if input.controllers.len() > 0 {
-            x = (input.controllers[0].axis_l_x as f32 / i16::MAX as f32) * 0.5;
-            y = (input.controllers[0].axis_l_y as f32 / i16::MAX as f32) * -0.5;
+            x = (input.controllers[0].axis_l_x as f32 / i16::MAX as f32) * 55.0;
+            y = (input.controllers[0].axis_l_y as f32 / i16::MAX as f32) * -55.0;
         }
 
         self.state.step(b2::Vec2 { x: x, y: y });
@@ -162,16 +167,12 @@ impl MiniGame for Sumo {
             let shape = &object.drawn_shape;
             let body = self.state.b2world.body_mut(object.body);
             let transform = body.transform();
-            // let x = (transform.rot.cos * v.x - transform.rot.sin * v.y) + transform.pos.x;
-            // let y = (transform.rot.sin * v.x + transform.rot.cos * v.y) + transform.pos.y;
             let mut transform_matrix = Transform {
-                transform: 
-                [[transform.rot.cos, transform.rot.sin, 0.0, 0.0],
-                [-transform.rot.sin, transform.rot.cos, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [transform.pos.x, transform.pos.y, 0.0, 1.0]],
+                transform: [[transform.rot.cos, transform.rot.sin, 0.0, 0.0],
+                            [-transform.rot.sin, transform.rot.cos, 0.0, 0.0],
+                            [0.0, 0.0, 1.0, 0.0],
+                            [transform.pos.x /10.0, transform.pos.y / 10.0, 0.0, 1.0]],
             };
-            // object.transform = transform;
             match object.components.draw {
                 Some(ref mut draw_object) => {
                     draw_object.transform = transform_matrix;
@@ -185,7 +186,7 @@ impl MiniGame for Sumo {
         for object in &mut self.state.objects {
             match object.components.draw {
                 Some(ref mut draw_object) => {
-                    // let draw_o : &mut DrawObject = 
+                    // let draw_o : &mut DrawObject =
                     draw_system.draw(draw_object);
                 }
                 None => (),

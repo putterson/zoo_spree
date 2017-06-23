@@ -48,7 +48,7 @@ pub type Point = Vertex;
 impl Point {
     pub fn from_point_and_color(physics_point: &B2Point, color: Color) -> Point {
         return Point {
-            pos: [physics_point.x, physics_point.y],
+            pos: [physics_point.x / 10.0, physics_point.y / 10.0],
             color: color,
         };
     }
@@ -57,7 +57,7 @@ impl Point {
 pub type Color = [f32; 3];
 
 
-const CLEAR_COLOR: [f32; 4] = [0.1, 0.2, 0.3, 1.0];
+const CLEAR_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
 // Identity matrix
 const TRANSFORM: Transform = Transform {
@@ -95,16 +95,6 @@ impl DrawObject {
     fn gfx_vertices(&self) -> Vec<Point> {
         self.vertices
             .clone()
-        // .into_iter()
-        // .map(|v| {
-        //     let x = (transform.rot.cos * v.x - transform.rot.sin * v.y) + transform.pos.x;
-        //     let y = (transform.rot.sin * v.x + transform.rot.cos * v.y) + transform.pos.y;
-        //     Vertex {
-        //         pos: [x, y],
-        //         color: self.color,
-        //     }
-        // })
-        // .collect()
     }
 }
 
@@ -222,6 +212,10 @@ impl DrawSystem {
     }
 
     pub fn draw(&mut self, object: &mut DrawObject) -> () {
+        if self.resize {
+            object.bundle.data.out = self.color_view.clone();
+            // gfx_window_sdl::update_views(&self.window, &mut , &mut self.depth_view);
+        }
         self.encoder.update_buffer(&object.bundle.data.transform, &[object.transform], 0);
         self.encoder
             .update_buffer(&object.bundle.data.vbuf, &object.gfx_vertices()[..], 0)
