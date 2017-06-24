@@ -4,7 +4,6 @@ use cgmath::Rad;
 use std::f32;
 use std::i16;
 
-
 use input::InputState;
 
 use Components;
@@ -25,14 +24,23 @@ struct Shape {
     color: Color,
 }
 
+struct Player {
+    controller_inst_id: i32,
+    object: GameObject,
+}
+
 struct GameState {
     objects: Vec<GameObject>,
+    players: Vec<Player>,
 }
 
 impl GameState {
     fn new() -> GameState {
 
-        GameState { objects: vec![] }
+        GameState {
+            objects: vec![],
+            players: vec![],
+        }
     }
 
     fn step(&mut self) {}
@@ -48,12 +56,37 @@ impl GameState {
         let vertices =
             shape.vertices.iter().map(|v| Point::from_point_and_color(v, color)).collect();
 
-        let physics_object = Some(physics_system.create_physics_object(&shape.vertices, is_dynamic));
+        let physics_object = Some(physics_system.create_body(&shape.vertices, is_dynamic));
 
         self.objects.push(GameObject {
             drawn_shape: shape,
             components: Components {
                 draw: Some(draw_system.create_draw_object(vertices, length)),
+                physics: physics_object,
+            },
+        });
+
+
+        &self.objects[self.objects.len() - 1]
+    }
+
+    fn new_draw_object_stl<'a>(&'a mut self,
+                               draw_system: &mut DrawSystem,
+                               physics_system: &mut PhysicsSystem,
+                               shape: Shape,
+                               is_dynamic: bool)
+                               -> &'a GameObject {
+        let length = shape.vertices.len();
+        let color = shape.color;
+        // let vertices =
+        // shape.vertices.iter().map(|v| Point::from_point_and_color(v, color)).collect();
+
+        let physics_object = Some(physics_system.create_body_stl(is_dynamic));
+
+        self.objects.push(GameObject {
+            drawn_shape: shape,
+            components: Components {
+                draw: Some(draw_system.create_draw_object_stl()),
                 physics: physics_object,
             },
         });
@@ -76,10 +109,10 @@ impl MiniGame for Sumo {
     fn new(draw: &mut DrawSystem, physics: &mut PhysicsSystem) -> Sumo {
         let mut state = GameState::new();
         for i in 1..10 {
-            state.new_draw_object(draw,
-                                  physics,
-                                  Shape {
-                                      vertices: vec![
+            state.new_draw_object_stl(draw,
+                                      physics,
+                                      Shape {
+                                          vertices: vec![
                                             B2Point {x: 0.0, y: 0.0},
                                             B2Point {x: 0.0, y: 2.0},
                                             B2Point {x: 2.0, y: 0.0},
@@ -87,9 +120,9 @@ impl MiniGame for Sumo {
                                             B2Point {x: 0.0, y: 2.0},
                                             B2Point {x: 2.0, y: 0.0},
                                         ],
-                                      color: [0.0, 0.0, 1.0],
-                                  },
-                                  true);
+                                          color: [0.0, 0.0, 1.0],
+                                      },
+                                      true);
         }
         state.new_draw_object(draw,
                               physics,
@@ -99,7 +132,7 @@ impl MiniGame for Sumo {
                                             B2Point {x: -9.0, y: 9.0},
                                             B2Point {x: -15.0, y: 0.0},
                                         ],
-                                  color: [1.0, 0.0, 0.0],
+                                  color: [0.0, 0.5, 0.5],
                               },
                               false);
         state.new_draw_object(draw,
@@ -110,7 +143,7 @@ impl MiniGame for Sumo {
                                             B2Point {x: 9.0, y: 9.0},
                                             B2Point {x: 15.0, y: 0.0},
                                         ],
-                                  color: [1.0, 0.0, 0.0],
+                                  color: [0.0, 0.5, 0.5],
                               },
                               false);
         state.new_draw_object(draw,
@@ -121,7 +154,7 @@ impl MiniGame for Sumo {
                                             B2Point {x: 9.0, y: 9.0},
                                             B2Point {x: 0.0, y: 15.0},
                                         ],
-                                  color: [1.0, 0.0, 0.0],
+                                  color: [0.0, 0.5, 0.5],
                               },
                               false);
         state.new_draw_object(draw,
@@ -132,7 +165,7 @@ impl MiniGame for Sumo {
                                             B2Point {x: -9.0, y: -9.0},
                                             B2Point {x: 0.0, y: -15.0},
                                         ],
-                                  color: [1.0, 0.0, 0.0],
+                                  color: [0.0, 0.5, 0.5],
                               },
                               false);
 
@@ -149,12 +182,12 @@ impl MiniGame for Sumo {
 
         // Physics step
         for object in &mut self.state.objects {
-        match object.components.physics {
-            Some(ref physics_object) => {
-                physics_system.apply_force_to_center(physics::Point { x: x, y: y }, physics_object);
+            match object.components.physics {
+                Some(ref physics_object) => {
+                    physics_system.apply_force_to_center(physics::Point { x: x, y: y }, physics_object);
+                }
+                None => (),
             }
-            None => (),
-        }
         }
 
         physics_system.step();

@@ -22,6 +22,10 @@ use gfx_core::handle::{RenderTargetView, DepthStencilView};
 
 use cgmath;
 
+use stl;
+use stl::BinaryStlFile;
+use stl::Triangle;
+
 use config::VideoConfig;
 use physics::B2Point;
 
@@ -53,6 +57,23 @@ impl Point {
             pos: [physics_point.x / 10.0, physics_point.y / 10.0],
             color: color,
         };
+    }
+
+    pub fn from_stl(triangle : &Triangle, color: Color) -> Vec<Point> {
+        return vec![
+            Point {
+                pos: [triangle.v1[0],triangle.v1[1]],
+                color: color,
+            },
+            Point {
+                pos: [triangle.v2[0],triangle.v2[1]],
+                color: color,
+            },
+            Point {
+                pos: [triangle.v3[0],triangle.v3[1]],
+                color: color,
+            },
+        ];
     }
 }
 
@@ -172,7 +193,6 @@ impl DrawSystem {
                                     pipe::new())
             .unwrap();
 
-        // TODO:
         let vertex_buffer = self.factory
             .create_buffer(vertex_count,
                            gfx::buffer::Role::Vertex,
@@ -193,6 +213,43 @@ impl DrawSystem {
         };
 
 
+
+        return DrawObject::new(vertices, [1.0, 2.0, 3.0], Bundle::new(slice, pso, data));
+    }
+
+    pub fn create_draw_object_stl(&mut self) -> DrawObject {
+        let pso = self.factory
+            .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
+                                    include_bytes!("shader/triangle_150.glslf"),
+                                    pipe::new())
+            .unwrap();
+        use std::io::Cursor;
+
+        let mut model_reader = Cursor::new( include_bytes!("../models/arrow_head.stl").iter() );
+
+        let stl_file = stl::read_stl(&mut model_reader).expect("Failed to load model");
+        let vertex_count = stl_file.header.num_triangles * 3;
+
+        let vertices = stl_file.triangles.iter().flat_map(|t| Point::from_stl(t, t.normal)).collect();
+
+        let vertex_buffer = self.factory
+            .create_buffer(vertex_count as usize,
+                           gfx::buffer::Role::Vertex,
+                           gfx::memory::Usage::Dynamic,
+                           gfx::Bind::empty())
+            .unwrap();
+
+
+        let slice = Slice::new_match_vertex_buffer(&vertex_buffer);
+
+        let transform_buffer = self.factory.create_constant_buffer(1);
+
+
+        let data = pipe::Data {
+            vbuf: vertex_buffer,
+            transform: transform_buffer,
+            out: self.color_view.clone(),
+        };
 
         return DrawObject::new(vertices, [1.0, 2.0, 3.0], Bundle::new(slice, pso, data));
     }

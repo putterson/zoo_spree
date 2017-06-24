@@ -14,6 +14,8 @@ extern crate sdl2;
 
 extern crate cgmath;
 
+extern crate stl;
+
 mod config;
 mod input;
 mod game;
@@ -103,7 +105,9 @@ pub fn main() {
                 Event::ControllerDeviceRemoved { which, .. } => {
                     info!("Controller {:?} Removed", which);
                     open_controllers.retain(|ref controller| which != controller.instance_id());
+                    input_state.controllers.retain(|ref controller_state| which != controller_state.inst_id );
                     info!("Open controllers size {:?}", open_controllers.len());
+                    info!("Controller state size {:?}", input_state.controllers.len());
                     debug_controllers(&open_controllers);
                 }
 

@@ -16,3 +16,4 @@ toml = "0.4"
 serde = "*"
 serde_derive = "*"
 wrapped2d = { path = "dependencies/rust_box2d"}
+stl = "0.2.0"
