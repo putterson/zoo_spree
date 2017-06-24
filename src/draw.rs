@@ -35,7 +35,7 @@ pub type DepthFormat = gfx::format::DepthStencil;
 
 gfx_defines!{
     vertex Vertex {
-        pos: [f32; 2] = "a_Pos",
+        pos: [f32; 3] = "a_Pos",
         color: [f32; 3] = "a_Color",
     }
 
@@ -54,23 +54,23 @@ pub type Point = Vertex;
 impl Point {
     pub fn from_point_and_color(physics_point: &B2Point, color: Color) -> Point {
         return Point {
-            pos: [physics_point.x / 10.0, physics_point.y / 10.0],
+            pos: [physics_point.x / 10.0, physics_point.y / 10.0, 0.0],
             color: color,
         };
     }
 
-    pub fn from_stl(triangle : &Triangle, color: Color) -> Vec<Point> {
+    pub fn from_stl(triangle: &Triangle, color: Color) -> Vec<Point> {
         return vec![
             Point {
-                pos: [triangle.v1[0],triangle.v1[1]],
+                pos: [triangle.v1[0],triangle.v1[1],triangle.v1[2]],
                 color: color,
             },
             Point {
-                pos: [triangle.v2[0],triangle.v2[1]],
+                pos: [triangle.v2[0],triangle.v2[1],triangle.v2[2]],
                 color: color,
             },
             Point {
-                pos: [triangle.v3[0],triangle.v3[1]],
+                pos: [triangle.v3[0],triangle.v3[1],triangle.v3[2]],
                 color: color,
             },
         ];
@@ -97,6 +97,7 @@ pub struct DrawObject {
     pub transform: Transform,
     color: Color,
     bundle: Bundle<Resources, pipe::Data<Resources>>,
+    update_model: bool,
 }
 
 impl DrawObject {
@@ -111,6 +112,7 @@ impl DrawObject {
             transform: TRANSFORM,
             color: color,
             bundle: bundle,
+            update_model: true,
         }
     }
 
@@ -225,12 +227,13 @@ impl DrawSystem {
             .unwrap();
         use std::io::Cursor;
 
-        let mut model_reader = Cursor::new( include_bytes!("../models/arrow_head.stl").iter() );
+        let mut model_reader = Cursor::new(include_bytes!("../models/arrow_head.stl").iter());
 
         let stl_file = stl::read_stl(&mut model_reader).expect("Failed to load model");
         let vertex_count = stl_file.header.num_triangles * 3;
 
-        let vertices = stl_file.triangles.iter().flat_map(|t| Point::from_stl(t, t.normal)).collect();
+        let vertices =
+            stl_file.triangles.iter().flat_map(|t| Point::from_stl(t, t.normal)).collect();
 
         let vertex_buffer = self.factory
             .create_buffer(vertex_count as usize,
@@ -276,9 +279,14 @@ impl DrawSystem {
             // gfx_window_sdl::update_views(&self.window, &mut , &mut self.depth_view);
         }
         self.encoder.update_buffer(&object.bundle.data.transform, &[object.transform], 0);
-        self.encoder
-            .update_buffer(&object.bundle.data.vbuf, &object.gfx_vertices()[..], 0)
-            .expect("Failed to update vertex buffer");
+
+        if object.update_model {
+            self.encoder
+                .update_buffer(&object.bundle.data.vbuf, &object.gfx_vertices()[..], 0)
+                .expect("Failed to update vertex buffer");
+            object.update_model = false;
+        }
+
         object.bundle.encode(&mut self.encoder)
     }
 }
