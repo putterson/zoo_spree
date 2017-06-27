@@ -22,9 +22,6 @@ mod game;
 mod draw;
 mod physics;
 
-use gfx::traits::FactoryExt;
-use gfx::Device;
-
 use input::{InputState, ControllerState};
 
 use draw::DrawSystem;
@@ -41,8 +38,6 @@ use sdl2::event::Event;
 use sdl2::event::WindowEvent;
 use sdl2::keyboard::Keycode;
 use std::time::Duration;
-
-use gfx_core::format::{DepthStencil, Rgba8};
 
 pub fn main() {
     // Initialize logging

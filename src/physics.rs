@@ -24,7 +24,7 @@ const IDENTITY: [[f32; 4]; 4] =
 impl PhysicsSystem {
     pub fn new() -> PhysicsSystem {
         let gravity = B2Point { x: 0., y: -10.0 };
-        let mut world = b2::World::<NoUserData>::new(&gravity);
+        let world = b2::World::<NoUserData>::new(&gravity);
 
         PhysicsSystem { world: world }
     }
@@ -107,7 +107,7 @@ impl PhysicsSystem {
         // Update transformation matrix
         let body = self.world.body_mut(physics_object.body_handle);
         let transform = body.transform();
-        let mut transform_matrix = [[transform.rot.cos, transform.rot.sin, 0.0, 0.0],
+        let transform_matrix = [[transform.rot.cos, transform.rot.sin, 0.0, 0.0],
                                     [-transform.rot.sin, transform.rot.cos, 0.0, 0.0],
                                     [0.0, 0.0, 1.0, 0.0],
                                     [transform.pos.x / SIZE_FACTOR, transform.pos.y / SIZE_FACTOR, 0.0, 1.0]];

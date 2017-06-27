@@ -1,6 +1,3 @@
-use cgmath::Vector2;
-use cgmath::{Rotation, Rotation2, Basis2};
-use cgmath::Rad;
 use std::f32;
 use std::i16;
 
@@ -17,7 +14,6 @@ use draw::Point;
 use draw::Transform;
 use draw::Color;
 use draw::DrawSystem;
-use draw::DrawObject;
 
 struct Shape {
     vertices: Vec<B2Point>,
@@ -108,7 +104,7 @@ pub struct Sumo {
 impl MiniGame for Sumo {
     fn new(draw: &mut DrawSystem, physics: &mut PhysicsSystem) -> Sumo {
         let mut state = GameState::new();
-        for i in 1..10 {
+        for _ in 1..10 {
             state.new_draw_object_stl(draw,
                                       physics,
                                       Shape {

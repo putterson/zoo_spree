@@ -20,10 +20,7 @@ use gfx_device_gl::Device as GLDevice;
 use gfx_device_gl::CommandBuffer;
 use gfx_core::handle::{RenderTargetView, DepthStencilView};
 
-use cgmath;
-
 use stl;
-use stl::BinaryStlFile;
 use stl::Triangle;
 
 use config::VideoConfig;
@@ -170,11 +167,11 @@ impl DrawSystem {
         }
 
 
-        let (mut window, mut glcontext, mut device, mut factory, mut color_view, mut depth_view) =
+        let (window, glcontext, device, mut factory, color_view, depth_view) =
             gfx_window_sdl::init::<ColorFormat, DepthFormat>(builder)
                 .expect("gfx_window_sdl::init failed!");
 
-        let mut encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
+        let encoder: gfx::Encoder<_, _> = factory.create_command_buffer().into();
 
         DrawSystem {
             window: window,
@@ -278,7 +275,7 @@ impl DrawSystem {
             object.bundle.data.out = self.color_view.clone();
             // gfx_window_sdl::update_views(&self.window, &mut , &mut self.depth_view);
         }
-        self.encoder.update_buffer(&object.bundle.data.transform, &[object.transform], 0);
+        self.encoder.update_buffer(&object.bundle.data.transform, &[object.transform], 0).expect("Failed to update tranformation buffer");
 
         if object.update_model {
             self.encoder
