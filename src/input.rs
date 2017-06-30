@@ -4,11 +4,22 @@ use sdl2::controller::Axis;
 use sdl2::event::Event;
 use sdl2::GameControllerSubsystem;
 use sdl2::Sdl;
+use self::InputEvent::{InputAdded, InputRemoved};
+
+use std::collections::vec_deque::IntoIter;
+
+use std::collections::VecDeque;
+
+pub enum InputEvent {
+    InputAdded(ID),
+    InputRemoved(ID),
+}
 
 pub struct InputSystem {
     sdl_controller_subsystem: GameControllerSubsystem,
     open_sdl_controllers: Vec<GameController>,
-    controller_states: Vec<ControllerState>
+    controller_states: Vec<ControllerState>,
+    pub event_queue: VecDeque<InputEvent>,
 }
 
 pub type ID = i32;
@@ -59,6 +70,7 @@ impl InputSystem {
             sdl_controller_subsystem: controller_subsystem,
             open_sdl_controllers: vec![],
             controller_states: vec![],
+            event_queue: VecDeque::new(),
         }
     }
 
@@ -88,9 +100,12 @@ impl InputSystem {
             Event::ControllerDeviceAdded { which, .. } => {
                 info!("Controller {:?} Added", which);
                 let controller = self.sdl_controller_subsystem.open(which as u32).unwrap();
-                self.controller_states.push(ControllerState::from(&controller));
+                let state = ControllerState::from(&controller);
+                let id = state.inst_id;
+                self.controller_states.push(state);
                 self.open_sdl_controllers.push(controller);
 
+                self.event_queue.push_back(InputAdded(id));
 
                 info!("Open controllers size {:?}", self.open_sdl_controllers.len());
                 debug_controllers(&self.open_sdl_controllers);
@@ -100,6 +115,9 @@ impl InputSystem {
                 info!("Controller {:?} Removed", which);
                 self.open_sdl_controllers.retain(|ref controller| which != controller.instance_id());
                 self.controller_states.retain(|ref controller_state| which != controller_state.inst_id );
+
+                self.event_queue.push_back(InputRemoved(which));
+
                 info!("Open controllers size {:?}", self.open_sdl_controllers.len());
                 info!("Controller state size {:?}", self.controller_states.len());
                 debug_controllers(&self.open_sdl_controllers);
@@ -114,6 +132,10 @@ impl InputSystem {
 
     pub fn get_controller_state(&self, id: ID) -> Option<&ControllerState> {
         return self.controller_states.iter().filter(|c| c.inst_id == id).next();
+    }
+
+    pub fn event(&mut self) -> Option<InputEvent> {
+        return self.event_queue.pop_front();
     }
 }
 

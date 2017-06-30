@@ -95,6 +95,10 @@ impl PhysicsSystem {
         };
     }
 
+    pub fn destroy_body(&mut self, physics_object: &PhysicsObject) {
+        self.world.destroy_body(physics_object.body_handle);
+    }
+
     pub fn apply_force_to_center(&self, force: Point, physics_object: &PhysicsObject) {
         let force_vec = &b2::Vec2 {
             x: force.x,

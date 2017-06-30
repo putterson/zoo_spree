@@ -15,6 +15,7 @@ use draw::Transform;
 use draw::Color;
 use draw::DrawSystem;
 use input::ID;
+use input::InputEvent::{InputAdded, InputRemoved};
 
 struct Shape {
     vertices: Vec<B2Point>,
@@ -104,6 +105,34 @@ impl GameState {
 
         self.players.push(player);
     }
+
+    fn remove_player_object_by_controller_id(&mut self,
+                                             draw_system: &mut DrawSystem,
+                                             physics_system: &mut PhysicsSystem,
+                                             id: ID) {
+        self.players.retain(|ref p| {
+            match p.controller_inst_id {
+                Some(player_controller_id) => {
+
+                    if id == player_controller_id {
+
+                        let p_obj = &p.object.components.physics;
+
+                        if p_obj.is_some() {
+                            physics_system.destroy_body(p_obj.as_ref().unwrap());
+                        }
+
+                        info!("Player removed from game");
+
+                        return false;
+                    }
+
+                    return true;
+                }
+                None => true
+            }
+        });
+    }
 }
 
 struct GameObject {
@@ -174,10 +203,24 @@ impl MiniGame for Sumo {
         Sumo { state: state }
     }
 
-    fn step(&mut self, input: &InputSystem, physics_system: &mut PhysicsSystem) {
-        let mut x: f32 = 0.0;
-        let mut y: f32 = 0.0;
-        if input.controller_ids().len() > 0 {}
+    fn step(&mut self, draw: &mut DrawSystem, physics: &mut PhysicsSystem, input: &mut InputSystem) {
+        // Handle input events
+
+        'events: loop {
+            match input.event() {
+                Some(InputAdded(id)) => {
+                    self.state.new_player_object(draw, physics, Some(id));
+                    info!("New player added to game");
+                }
+                Some(InputRemoved(id)) => {
+                    info!("Player removal event handling");
+
+                    self.state.remove_player_object_by_controller_id(draw, physics, id)
+                }
+                None => { break 'events }
+            }
+        }
+
 
         // Physics step
         //        for object in &mut self.state.objects {
@@ -195,19 +238,18 @@ impl MiniGame for Sumo {
                     let maybe_ctrlr_state = input.get_controller_state(id);
                     match (&player.object.components.physics, maybe_ctrlr_state) {
                         (&Some(ref physics_object), Some(ctrlr_state)) => {
-                            x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32) * 55.0;
-                            y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -55.0;
-
-                            physics_system.apply_force_to_center(physics::Point { x: x, y: y }, physics_object);
+                            let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32) * 55.0;
+                            let y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -55.0;
+                            physics.apply_force_to_center(physics::Point { x: x, y: y }, physics_object);
                         }
-                        _ => (),
+                        _ => { info!("Player does not have physics object or input system couldn't find assigned controller") }
                     }
                 }
                 _ => ()
             }
         }
 
-        physics_system.step();
+        physics.step();
 
 
         // Graphics step (just set the inputs)
@@ -219,7 +261,25 @@ impl MiniGame for Sumo {
                     match object.components.physics {
                         Some(ref physics_object) => {
                             draw_object.transform = Transform {
-                                transform: physics_system.get_transformation(&physics_object),
+                                transform: physics.get_transformation(&physics_object),
+                            }
+                        }
+                        None => (),
+                    }
+                }
+                None => (),
+            }
+        }
+
+        for player in &mut self.state.players {
+            //            let shape = &object.drawn_shape;
+            // Set the draw transform matrix for each object
+            match player.object.components.draw {
+                Some(ref mut draw_object) => {
+                    match player.object.components.physics {
+                        Some(ref physics_object) => {
+                            draw_object.transform = Transform {
+                                transform: physics.get_transformation(&physics_object),
                             }
                         }
                         None => (),

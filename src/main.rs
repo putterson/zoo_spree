@@ -101,7 +101,7 @@ pub fn main() {
 
         draw_system.pre_render();
 
-        minigame.step(&input_system, &mut physics_system);
+        minigame.step(&mut draw_system, &mut physics_system, &mut input_system);
         minigame.render(&mut draw_system);
 
         draw_system.post_render();
