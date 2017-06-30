@@ -22,7 +22,7 @@ mod game;
 mod draw;
 mod physics;
 
-use input::{InputState, ControllerState};
+use input::{InputSystem, ControllerState};
 
 use draw::DrawSystem;
 use draw::DrawObject;
@@ -59,21 +59,13 @@ pub fn main() {
     // Init Physics system
     let mut physics_system = PhysicsSystem::new();
 
-    // Initialize controller
-    let controller_subsystem = sdl_context.game_controller().unwrap();
-
-    // Enable controller events
-    if !controller_subsystem.event_state() {
-        controller_subsystem.set_event_state(true);
-    }
-
-    let mut open_controllers: Vec<sdl2::controller::GameController> = vec![];
-    let mut input_state = InputState { controllers: vec![] };
+    // Init Input system
+    let mut input_system = InputSystem::new(&sdl_context);
 
 
     // The active minigame
     // let mut minigame : Triangle = MiniGame::new();
-    let mut minigame : Sumo = MiniGame::new(&mut draw_system, &mut physics_system);
+    let mut minigame : Sumo = MiniGame::new(&mut draw_system, &mut physics_system, & input_system);
 
     // Event loop
     let mut event_pump = sdl_context.event_pump().unwrap();
@@ -83,27 +75,11 @@ pub fn main() {
             match event {
                 Event::ControllerButtonDown { .. } |
                 Event::ControllerButtonUp { .. } |
-                Event::ControllerAxisMotion { .. } => {
-                    input_state.update(event);
-                }
-                Event::ControllerDeviceAdded { which, .. } => {
-                    info!("Controller {:?} Added", which);
-                    let controller = controller_subsystem.open(which as u32).unwrap();
-                    input_state.controllers.push(ControllerState::from(&controller));
-                    open_controllers.push(controller);
-
-                    
-                    info!("Open controllers size {:?}", open_controllers.len());
-                    debug_controllers(&open_controllers);
-                }
-                
-                Event::ControllerDeviceRemoved { which, .. } => {
-                    info!("Controller {:?} Removed", which);
-                    open_controllers.retain(|ref controller| which != controller.instance_id());
-                    input_state.controllers.retain(|ref controller_state| which != controller_state.inst_id );
-                    info!("Open controllers size {:?}", open_controllers.len());
-                    info!("Controller state size {:?}", input_state.controllers.len());
-                    debug_controllers(&open_controllers);
+                Event::ControllerAxisMotion { .. } |
+                Event::ControllerDeviceAdded { .. } |
+                Event::ControllerDeviceRemoved { .. }
+                => {
+                    input_system.update(event);
                 }
 
                 Event::Window { win_event, .. } => {
@@ -125,17 +101,11 @@ pub fn main() {
 
         draw_system.pre_render();
 
-        minigame.step(&input_state, &mut physics_system);
+        minigame.step(&input_system, &mut physics_system);
         minigame.render(&mut draw_system);
 
         draw_system.post_render();
 
-    }
-}
-
-fn debug_controllers(controllers: &Vec<sdl2::controller::GameController>) {
-    for ref c in controllers {
-        debug!("controller {:?}", c.instance_id());
     }
 }
 

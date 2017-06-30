@@ -2,16 +2,22 @@ use sdl2::controller::GameController;
 use sdl2::controller::Button;
 use sdl2::controller::Axis;
 use sdl2::event::Event;
+use sdl2::GameControllerSubsystem;
+use sdl2::Sdl;
 
-pub struct InputState {
-    pub controllers: Vec<ControllerState>
+pub struct InputSystem {
+    sdl_controller_subsystem: GameControllerSubsystem,
+    open_sdl_controllers: Vec<GameController>,
+    controller_states: Vec<ControllerState>
 }
+
+pub type ID = i32;
 
 #[derive(Default)]
 #[derive(Debug)]
 pub struct ControllerState {
     pub id: u32,
-    pub inst_id: i32,
+    pub inst_id: ID,
     pub guid: String,
     
     pub button_x: bool,
@@ -38,32 +44,76 @@ pub struct ControllerState {
     pub axis_r_y: i16,
 }
 
-impl InputState {
+impl InputSystem {
+    pub fn new(sdl_context: &Sdl) -> InputSystem {
+
+        // Initialize controller
+        let controller_subsystem = sdl_context.game_controller().unwrap();
+
+        // Enable controller events
+        if !controller_subsystem.event_state() {
+            controller_subsystem.set_event_state(true);
+        }
+
+        return InputSystem {
+            sdl_controller_subsystem: controller_subsystem,
+            open_sdl_controllers: vec![],
+            controller_states: vec![],
+        }
+    }
+
     pub fn update(&mut self, event: Event) {
         match event {
             Event::ControllerButtonDown { which, button, .. } => {
-                for c in self.controllers.iter_mut(){
+                for c in self.controller_states.iter_mut(){
                     if c.inst_id == which {
                         c.set_button(button, true);
                     }
                 }
             },
             Event::ControllerButtonUp { which, button, .. } => {
-                for c in self.controllers.iter_mut(){
+                for c in self.controller_states.iter_mut(){
                     if c.inst_id == which {
                         c.set_button(button, false);
                     }
                 }
             },
             Event::ControllerAxisMotion { which, axis, value, .. } => {
-                for c in self.controllers.iter_mut(){
+                for c in self.controller_states.iter_mut(){
                     if c.inst_id == which {
                         c.set_axis(axis, value);
                     }
                 }
             }
+            Event::ControllerDeviceAdded { which, .. } => {
+                info!("Controller {:?} Added", which);
+                let controller = self.sdl_controller_subsystem.open(which as u32).unwrap();
+                self.controller_states.push(ControllerState::from(&controller));
+                self.open_sdl_controllers.push(controller);
+
+
+                info!("Open controllers size {:?}", self.open_sdl_controllers.len());
+                debug_controllers(&self.open_sdl_controllers);
+            }
+
+            Event::ControllerDeviceRemoved { which, .. } => {
+                info!("Controller {:?} Removed", which);
+                self.open_sdl_controllers.retain(|ref controller| which != controller.instance_id());
+                self.controller_states.retain(|ref controller_state| which != controller_state.inst_id );
+                info!("Open controllers size {:?}", self.open_sdl_controllers.len());
+                info!("Controller state size {:?}", self.controller_states.len());
+                debug_controllers(&self.open_sdl_controllers);
+            }
             _ => {}
         }
+    }
+
+    pub fn controller_ids(&self) -> Vec<ID> {
+        return self.controller_states.iter().map(|c| c.inst_id).collect();
+    }
+
+    pub fn get_controller_state(&self, id: ID) -> Option<&ControllerState> {
+        return self.controller_states.iter().filter(|c| c.inst_id == id).next();
     }
 }
 
@@ -131,5 +181,11 @@ impl<'a> From<&'a GameController> for ControllerState {
         state.set_axis(Axis::RightY, controller.axis(Axis::RightY));
         
         return state;
+    }
+}
+
+fn debug_controllers(controllers: &Vec<GameController>) {
+    for ref c in controllers {
+        debug!("controller {:?}", c.instance_id());
     }
 }

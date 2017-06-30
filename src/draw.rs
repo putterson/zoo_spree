@@ -1,9 +1,9 @@
 use gfx;
 use gfx::Encoder;
-// use gfx::CommandBuffer;
+
 use gfx::traits::FactoryExt;
 use gfx::Slice;
-// use gfx::Resources;
+
 use gfx::Bundle;
 
 use gfx_core::Device;
