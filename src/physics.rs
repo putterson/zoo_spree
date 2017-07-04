@@ -3,6 +3,8 @@ extern crate wrapped2d;
 use self::wrapped2d::b2;
 use self::wrapped2d::handle::TypedHandle;
 use self::wrapped2d::user_data::NoUserData;
+use self::wrapped2d::collision::shapes::Shape;
+use self::wrapped2d::collision::shapes::chain::ChainShape;
 
 use stl;
 
@@ -11,7 +13,7 @@ use cgmath;
 pub type Point = cgmath::Point2<f32>;
 pub type B2Point = b2::Vec2;
 
-const SIZE_FACTOR : f32 = 10.0;
+const SIZE_FACTOR: f32 = 10.0;
 
 pub struct PhysicsSystem {
     world: b2::World<NoUserData>,
@@ -31,6 +33,25 @@ impl PhysicsSystem {
 
     pub fn step(&mut self) -> () {
         self.world.step(1. / 60., 6, 2);
+    }
+
+    pub fn create_boundary_sensor(&mut self, vertices: &Vec<B2Point>) -> PhysicsObject {
+        let mut body_def = b2::BodyDef::new();
+
+        let body_handle: TypedHandle<b2::Body> = self.world.create_body(&body_def);
+
+        let chain_boundary = ChainShape::new_loop(vertices.as_ref());
+
+        let mut fixture_def = b2::FixtureDef::new();
+        fixture_def.density = 0.0;
+        fixture_def.friction = 0.0;
+
+        self.world.body_mut(body_handle).create_fixture(&chain_boundary, &mut fixture_def);
+
+        return PhysicsObject {
+            transform: IDENTITY,
+            body_handle: body_handle,
+        };
     }
 
     pub fn create_body(&mut self, vertices: &Vec<B2Point>, is_dynamic: bool) -> PhysicsObject {
@@ -53,14 +74,14 @@ impl PhysicsSystem {
         };
     }
 
-    pub fn create_body_stl(&mut self, is_dynamic: bool) -> PhysicsObject {
+    pub fn create_body_stl(&mut self, stl: &'static [u8], is_dynamic: bool) -> PhysicsObject {
         let mut body_def = b2::BodyDef::new();
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
         }
         use std::io::Cursor;
 
-        let mut model_reader = Cursor::new(include_bytes!("../models/arrow_head.stl").iter());
+        let mut model_reader = Cursor::new(stl.iter());
 
         let stl_file = stl::read_stl(&mut model_reader).expect("Failed to load model");
 
@@ -74,17 +95,17 @@ impl PhysicsSystem {
 
         for t in stl_file.triangles.iter() {
             let points = [b2::Vec2 {
-                              x: t.v1[0] * SIZE_FACTOR,
-                              y: t.v1[1] * SIZE_FACTOR,
-                          },
-                          b2::Vec2 {
-                              x: t.v2[0] * SIZE_FACTOR,
-                              y: t.v2[1] * SIZE_FACTOR,
-                          },
-                          b2::Vec2 {
-                              x: t.v3[0] * SIZE_FACTOR,
-                              y: t.v3[1] * SIZE_FACTOR,
-                          }];
+                x: t.v1[0] * SIZE_FACTOR,
+                y: t.v1[1] * SIZE_FACTOR,
+            },
+                b2::Vec2 {
+                    x: t.v2[0] * SIZE_FACTOR,
+                    y: t.v2[1] * SIZE_FACTOR,
+                },
+                b2::Vec2 {
+                    x: t.v3[0] * SIZE_FACTOR,
+                    y: t.v3[1] * SIZE_FACTOR,
+                }];
             let body_box = b2::PolygonShape::new_with(&points);
             self.world.body_mut(body_handle).create_fixture(&body_box, &mut fixture_def);
         }
@@ -112,9 +133,9 @@ impl PhysicsSystem {
         let body = self.world.body_mut(physics_object.body_handle);
         let transform = body.transform();
         let transform_matrix = [[transform.rot.cos, transform.rot.sin, 0.0, 0.0],
-                                    [-transform.rot.sin, transform.rot.cos, 0.0, 0.0],
-                                    [0.0, 0.0, 1.0, 0.0],
-                                    [transform.pos.x / SIZE_FACTOR, transform.pos.y / SIZE_FACTOR, 0.0, 1.0]];
+            [-transform.rot.sin, transform.rot.cos, 0.0, 0.0],
+            [0.0, 0.0, 1.0, 0.0],
+            [transform.pos.x / SIZE_FACTOR, transform.pos.y / SIZE_FACTOR, 0.0, 1.0]];
 
         return transform_matrix;
     }

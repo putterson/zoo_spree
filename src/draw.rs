@@ -30,7 +30,7 @@ pub type ColorFormat = gfx::format::Rgba8;
 pub type DepthFormat = gfx::format::DepthStencil;
 
 
-gfx_defines!{
+gfx_defines! {
     vertex Vertex {
         pos: [f32; 3] = "a_Pos",
         color: [f32; 3] = "a_Color",
@@ -48,6 +48,7 @@ gfx_defines!{
 }
 
 pub type Point = Vertex;
+
 impl Point {
     pub fn from_point_and_color(physics_point: &B2Point, color: Color) -> Point {
         return Point {
@@ -59,15 +60,15 @@ impl Point {
     pub fn from_stl(triangle: &Triangle, color: Color) -> Vec<Point> {
         return vec![
             Point {
-                pos: [triangle.v1[0],triangle.v1[1],triangle.v1[2]],
+                pos: [triangle.v1[0], triangle.v1[1], triangle.v1[2]],
                 color: color,
             },
             Point {
-                pos: [triangle.v2[0],triangle.v2[1],triangle.v2[2]],
+                pos: [triangle.v2[0], triangle.v2[1], triangle.v2[2]],
                 color: color,
             },
             Point {
-                pos: [triangle.v3[0],triangle.v3[1],triangle.v3[2]],
+                pos: [triangle.v3[0], triangle.v3[1], triangle.v3[2]],
                 color: color,
             },
         ];
@@ -82,9 +83,9 @@ const CLEAR_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 // Identity matrix
 const TRANSFORM: Transform = Transform {
     transform: [[1.0, 0.0, 0.0, 0.0],
-                [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 1.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0]],
+        [0.0, 1.0, 0.0, 0.0],
+        [0.0, 0.0, 1.0, 0.0],
+        [0.0, 0.0, 0.0, 1.0]],
 };
 
 pub struct DrawObject {
@@ -92,14 +93,12 @@ pub struct DrawObject {
     translation: [f32; 2],
     rotation: f32,
     pub transform: Transform,
-    color: Color,
     bundle: Bundle<Resources, pipe::Data<Resources>>,
     update_model: bool,
 }
 
 impl DrawObject {
     fn new(vertices: Vec<Point>,
-           color: Color,
            bundle: Bundle<Resources, pipe::Data<Resources>>)
            -> DrawObject {
         DrawObject {
@@ -107,7 +106,6 @@ impl DrawObject {
             translation: [0.0, 0.0],
             rotation: 0.0,
             transform: TRANSFORM,
-            color: color,
             bundle: bundle,
             update_model: true,
         }
@@ -133,7 +131,6 @@ pub struct DrawSystem {
 
 impl DrawSystem {
     pub fn new(sdl_context: &Sdl, config: &mut VideoConfig) -> DrawSystem {
-
         // Initialize video
         let video_subsystem = sdl_context.video().unwrap();
 
@@ -185,12 +182,14 @@ impl DrawSystem {
         }
     }
 
-    pub fn create_draw_object(&mut self, vertices: Vec<Vertex>, vertex_count: usize) -> DrawObject {
+    pub fn create_draw_object(&mut self, vertices: Vec<Vertex>) -> DrawObject {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
                                     pipe::new())
             .unwrap();
+
+        let vertex_count = vertices.len();
 
         let vertex_buffer = self.factory
             .create_buffer(vertex_count,
@@ -212,11 +211,10 @@ impl DrawSystem {
         };
 
 
-
-        return DrawObject::new(vertices, [1.0, 2.0, 3.0], Bundle::new(slice, pso, data));
+        return DrawObject::new(vertices, Bundle::new(slice, pso, data));
     }
 
-    pub fn create_draw_object_stl(&mut self) -> DrawObject {
+    pub fn create_draw_object_stl(&mut self, stl: &'static [u8], color: Color) -> DrawObject {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
@@ -224,13 +222,13 @@ impl DrawSystem {
             .unwrap();
         use std::io::Cursor;
 
-        let mut model_reader = Cursor::new(include_bytes!("../models/arrow_head.stl").iter());
+        let mut model_reader = Cursor::new(stl.iter());
 
         let stl_file = stl::read_stl(&mut model_reader).expect("Failed to load model");
         let vertex_count = stl_file.header.num_triangles * 3;
 
         let vertices =
-            stl_file.triangles.iter().flat_map(|t| Point::from_stl(t, t.normal)).collect();
+            stl_file.triangles.iter().flat_map(|t| Point::from_stl(t, color)).collect();
 
         let vertex_buffer = self.factory
             .create_buffer(vertex_count as usize,
@@ -251,7 +249,7 @@ impl DrawSystem {
             out: self.color_view.clone(),
         };
 
-        return DrawObject::new(vertices, [1.0, 2.0, 3.0], Bundle::new(slice, pso, data));
+        return DrawObject::new(vertices, Bundle::new(slice, pso, data));
     }
 
     pub fn resize(&mut self) -> () {

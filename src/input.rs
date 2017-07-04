@@ -1,14 +1,13 @@
+use std::collections::VecDeque;
+
 use sdl2::controller::GameController;
 use sdl2::controller::Button;
 use sdl2::controller::Axis;
 use sdl2::event::Event;
 use sdl2::GameControllerSubsystem;
 use sdl2::Sdl;
+
 use self::InputEvent::{InputAdded, InputRemoved};
-
-use std::collections::vec_deque::IntoIter;
-
-use std::collections::VecDeque;
 
 pub enum InputEvent {
     InputAdded(ID),
@@ -30,7 +29,7 @@ pub struct ControllerState {
     pub id: u32,
     pub inst_id: ID,
     pub guid: String,
-    
+
     pub button_x: bool,
     pub button_y: bool,
     pub button_a: bool,
@@ -57,7 +56,6 @@ pub struct ControllerState {
 
 impl InputSystem {
     pub fn new(sdl_context: &Sdl) -> InputSystem {
-
         // Initialize controller
         let controller_subsystem = sdl_context.game_controller().unwrap();
 
@@ -77,21 +75,21 @@ impl InputSystem {
     pub fn update(&mut self, event: Event) {
         match event {
             Event::ControllerButtonDown { which, button, .. } => {
-                for c in self.controller_states.iter_mut(){
+                for c in self.controller_states.iter_mut() {
                     if c.inst_id == which {
                         c.set_button(button, true);
                     }
                 }
-            },
+            }
             Event::ControllerButtonUp { which, button, .. } => {
-                for c in self.controller_states.iter_mut(){
+                for c in self.controller_states.iter_mut() {
                     if c.inst_id == which {
                         c.set_button(button, false);
                     }
                 }
-            },
+            }
             Event::ControllerAxisMotion { which, axis, value, .. } => {
-                for c in self.controller_states.iter_mut(){
+                for c in self.controller_states.iter_mut() {
                     if c.inst_id == which {
                         c.set_axis(axis, value);
                     }
@@ -114,7 +112,7 @@ impl InputSystem {
             Event::ControllerDeviceRemoved { which, .. } => {
                 info!("Controller {:?} Removed", which);
                 self.open_sdl_controllers.retain(|ref controller| which != controller.instance_id());
-                self.controller_states.retain(|ref controller_state| which != controller_state.inst_id );
+                self.controller_states.retain(|ref controller_state| which != controller_state.inst_id);
 
                 self.event_queue.push_back(InputRemoved(which));
 
@@ -141,34 +139,34 @@ impl InputSystem {
 
 
 impl ControllerState {
-    fn set_button(&mut self, button: Button, value: bool){
+    fn set_button(&mut self, button: Button, value: bool) {
         match button {
-            Button::X => { self.button_x = value },
-            Button::Y => { self.button_y = value },
-            Button::A => { self.button_a = value },
-            Button::B => { self.button_b = value },
-            Button::LeftShoulder => { self.button_l_shoulder = value },
-            Button::RightShoulder => { self.button_r_shoulder = value },
-            Button::Guide => { self.button_guide = value },
-            Button::Back => { self.button_back = value },
-            Button::Start => { self.button_start = value },
-            Button::LeftStick => { self.button_l_stick = value },
-            Button::RightStick => { self.button_r_stick = value },
-            Button::DPadUp => { self.button_up = value },
-            Button::DPadDown => { self.button_down = value },
-            Button::DPadLeft => { self.button_left = value },
-            Button::DPadRight => { self.button_right = value },
+            Button::X => { self.button_x = value }
+            Button::Y => { self.button_y = value }
+            Button::A => { self.button_a = value }
+            Button::B => { self.button_b = value }
+            Button::LeftShoulder => { self.button_l_shoulder = value }
+            Button::RightShoulder => { self.button_r_shoulder = value }
+            Button::Guide => { self.button_guide = value }
+            Button::Back => { self.button_back = value }
+            Button::Start => { self.button_start = value }
+            Button::LeftStick => { self.button_l_stick = value }
+            Button::RightStick => { self.button_r_stick = value }
+            Button::DPadUp => { self.button_up = value }
+            Button::DPadDown => { self.button_down = value }
+            Button::DPadLeft => { self.button_left = value }
+            Button::DPadRight => { self.button_right = value }
         }
     }
 
-    fn set_axis(&mut self, axis: Axis, value: i16){
+    fn set_axis(&mut self, axis: Axis, value: i16) {
         match axis {
-            Axis::TriggerLeft => { self.axis_l_trigger = value },
-            Axis::TriggerRight => { self.axis_r_trigger = value },
-            Axis::LeftX => { self.axis_l_x = value },
-            Axis::LeftY => { self.axis_l_y = value },
-            Axis::RightX => { self.axis_r_x = value },
-            Axis::RightY => { self.axis_r_y = value },
+            Axis::TriggerLeft => { self.axis_l_trigger = value }
+            Axis::TriggerRight => { self.axis_r_trigger = value }
+            Axis::LeftX => { self.axis_l_x = value }
+            Axis::LeftY => { self.axis_l_y = value }
+            Axis::RightX => { self.axis_r_x = value }
+            Axis::RightY => { self.axis_r_y = value }
         }
     }
 }
@@ -178,7 +176,7 @@ impl<'a> From<&'a GameController> for ControllerState {
         let mut state = ControllerState::default();
 
         state.inst_id = controller.instance_id();
-        
+
         state.set_button(Button::X, controller.button(Button::X));
         state.set_button(Button::Y, controller.button(Button::Y));
         state.set_button(Button::A, controller.button(Button::A));
@@ -201,7 +199,7 @@ impl<'a> From<&'a GameController> for ControllerState {
         state.set_axis(Axis::LeftY, controller.axis(Axis::LeftY));
         state.set_axis(Axis::RightX, controller.axis(Axis::RightX));
         state.set_axis(Axis::RightY, controller.axis(Axis::RightY));
-        
+
         return state;
     }
 }
