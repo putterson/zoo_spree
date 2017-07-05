@@ -23,6 +23,7 @@ use gfx_core::handle::{RenderTargetView, DepthStencilView};
 use stl;
 use stl::Triangle;
 
+use game::minigame::Point as WorldPoint;
 use config::VideoConfig;
 use physics::B2Point;
 
@@ -50,9 +51,9 @@ gfx_defines! {
 pub type Point = Vertex;
 
 impl Point {
-    pub fn from_point_and_color(physics_point: &B2Point, color: Color) -> Point {
+    pub fn from_point_and_color(world_point: &WorldPoint, color: Color) -> Point {
         return Point {
-            pos: [physics_point.x / 10.0, physics_point.y / 10.0, 0.0],
+            pos: world_point.clone(),
             color: color,
         };
     }

@@ -1,8 +1,7 @@
 use input::InputSystem;
+use draw;
 use draw::DrawSystem;
 use draw::DrawObject;
-use draw::Point;
-use draw::Color;
 use physics::PhysicsSystem;
 use physics::PhysicsObject;
 use physics::B2Point;
@@ -16,11 +15,15 @@ pub trait MiniGame
     fn render(&mut self, draw: &mut DrawSystem) -> ();
 }
 
+//World types
+pub type Point = [f32; 3];
+pub type Color = [f32; 3];
+
 pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physics: &mut PhysicsSystem) -> (DrawObject, PhysicsObject) {
     let pi = std::f32::consts::PI;
 
-    let mut vertices: Vec<Point> = vec![];
-    let mut bounding: Vec<B2Point> = vec![];
+    let mut vertices: Vec<draw::Point> = vec![];
+    let mut bounding: Vec<Point> = vec![];
 
     //Number of points along the edge
     let steps: i32 = 64;
@@ -30,15 +33,8 @@ pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physic
     //Physics bounds
     for n in 0..steps {
         let angle = angle_step * n as f32;
-        bounding.push(
-            B2Point {
-                x: angle.sin() * bounding_diameter,
-                y: angle.cos() * bounding_diameter,
-            }
-        );
+        bounding.push([angle.sin() * bounding_diameter, angle.cos() * bounding_diameter, 0.0]);
     }
-
-    let bounding_body = physics.create_boundary_sensor(&bounding);
 
     //Graphics vertices
     for n in 0..steps {
@@ -47,18 +43,18 @@ pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physic
 
         let z = 0f32;
 
-        let p1 = Point {
+        let p1 = draw::Point {
             pos: [angle.sin() * id, angle.cos() * id, z],
             color: color,
 
         };
 
-        let p2 = Point {
+        let p2 = draw::Point {
             pos: [angle.sin() * od, angle.cos() * od, z],
             color: color,
         };
 
-        let p3 = Point {
+        let p3 = draw::Point {
             pos: [angle_prime.sin() * id, angle_prime.cos() * id, z],
             color: color,
         };
@@ -67,7 +63,7 @@ pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physic
         vertices.push(p2);
         vertices.push(p3);
 
-        let p1 = Point {
+        let p1 = draw::Point {
             pos: [angle_prime.sin() * od, angle_prime.cos() * od, z],
             color: color,
 

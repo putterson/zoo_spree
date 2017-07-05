@@ -11,7 +11,8 @@ use game::minigame::create_ring;
 use physics::B2Point;
 use physics;
 use physics::PhysicsSystem;
-use draw::Point;
+use game::minigame::Point;
+use draw;
 use draw::Transform;
 use draw::Color;
 use draw::DrawSystem;
@@ -19,7 +20,7 @@ use input::ID;
 use input::InputEvent::{InputAdded, InputRemoved};
 
 struct Shape {
-    vertices: Vec<B2Point>,
+    vertices: Vec<Point>,
     color: Color,
 }
 
@@ -53,7 +54,7 @@ impl GameState {
                            -> &'a GameObject {
         let color = shape.color;
         let vertices =
-            shape.vertices.iter().map(|v| Point::from_point_and_color(v, color)).collect();
+            shape.vertices.iter().map(|v| draw::Point::from_point_and_color(v, color)).collect();
 
         let physics_object = Some(physics_system.create_body(&shape.vertices, is_dynamic));
 
@@ -160,10 +161,10 @@ impl MiniGame for Sumo {
                               physics,
                               Shape {
                                   vertices: vec![
-                                      B2Point { x: -9.9, y: -9.9 },
-                                      B2Point { x: -9.9, y: 9.9 },
-                                      B2Point { x: -15.0, y: -10.0 },
-                                      B2Point { x: -15.0, y: 10.0 },
+                                      [-0.99, -0.99, 0.0],
+                                      [-0.99, 0.99, 0.0],
+                                      [-1.5, -1.0, 0.0],
+                                      [-1.5, 1.0, 0.0],
                                   ],
                                   color: [0.5, 0.5, 0.5],
                               },
@@ -172,10 +173,10 @@ impl MiniGame for Sumo {
                               physics,
                               Shape {
                                   vertices: vec![
-                                      B2Point { x: 9.9, y: -9.9 },
-                                      B2Point { x: 9.9, y: 9.9 },
-                                      B2Point { x: 15.0, y: -10.0 },
-                                      B2Point { x: 15.0, y: 10.0 },
+                                      [0.99, -0.99, 0.0],
+                                      [0.99, 0.99, 0.0],
+                                      [1.5, -1.0, 0.0],
+                                      [1.5, 1.0, 0.0],
                                   ],
                                   color: [0.5, 0.5, 0.5],
                               },
@@ -184,10 +185,10 @@ impl MiniGame for Sumo {
                               physics,
                               Shape {
                                   vertices: vec![
-                                      B2Point { x: -9.9, y: 9.9 },
-                                      B2Point { x: 9.9, y: 9.9 },
-                                      B2Point { x: -10.0, y: 15.0 },
-                                      B2Point { x: 10.0, y: 15.0 },
+                                      [-0.99, 0.99, 0.0],
+                                      [0.99, 0.99, 0.0],
+                                      [-1.0, 1.5, 0.0],
+                                      [1.0, 1.5, 0.0],
                                   ],
                                   color: [0.5, 0.5, 0.5],
                               },
@@ -196,10 +197,10 @@ impl MiniGame for Sumo {
                               physics,
                               Shape {
                                   vertices: vec![
-                                      B2Point { x: 9.9, y: -9.9 },
-                                      B2Point { x: -9.9, y: -9.9 },
-                                      B2Point { x: -10.0, y: -15.0 },
-                                      B2Point { x: 10.0, y: -15.0 },
+                                      [0.99, -0.99, 0.0],
+                                      [-0.99, -0.99, 0.0],
+                                      [-1.0, -1.5, 0.0],
+                                      [1.0, -1.5, 0.0],
                                   ],
                                   color: [0.5, 0.5, 0.5],
                               },
@@ -240,7 +241,7 @@ impl MiniGame for Sumo {
                         (&Some(ref physics_object), Some(ctrlr_state)) => {
                             let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32) * 55.0;
                             let y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -55.0;
-                            physics.apply_force_to_center(physics::Point { x: x, y: y }, physics_object);
+                            physics.apply_force_to_center([x, y, 0.0], physics_object);
                         }
                         _ => { info!("Player does not have physics object or input system couldn't find assigned controller") }
                     }

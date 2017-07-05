@@ -6,11 +6,14 @@ use self::wrapped2d::user_data::NoUserData;
 use self::wrapped2d::collision::shapes::Shape;
 use self::wrapped2d::collision::shapes::chain::ChainShape;
 
+use game::minigame::Point as WorldPoint;
+
 use stl;
 
 use cgmath;
 
-pub type Point = cgmath::Point2<f32>;
+pub type Point = [f32; 2];
+
 pub type B2Point = b2::Vec2;
 
 const SIZE_FACTOR: f32 = 10.0;
@@ -35,16 +38,20 @@ impl PhysicsSystem {
         self.world.step(1. / 60., 6, 2);
     }
 
-    pub fn create_boundary_sensor(&mut self, vertices: &Vec<B2Point>) -> PhysicsObject {
+    pub fn create_boundary_sensor(&mut self, vertices: &Vec<WorldPoint>) -> PhysicsObject {
         let mut body_def = b2::BodyDef::new();
+
+        body_def.body_type = b2::BodyType::Dynamic;
 
         let body_handle: TypedHandle<b2::Body> = self.world.create_body(&body_def);
 
-        let chain_boundary = ChainShape::new_loop(vertices.as_ref());
+        let physics_vertices: Vec<B2Point> = vertices.iter().map(|v| world_to_physics(v)).collect();
+
+        let chain_boundary = ChainShape::new_loop(&physics_vertices);
 
         let mut fixture_def = b2::FixtureDef::new();
-        fixture_def.density = 0.0;
-        fixture_def.friction = 0.0;
+        fixture_def.density = 0.1;
+        fixture_def.friction = 1.0;
 
         self.world.body_mut(body_handle).create_fixture(&chain_boundary, &mut fixture_def);
 
@@ -54,14 +61,15 @@ impl PhysicsSystem {
         };
     }
 
-    pub fn create_body(&mut self, vertices: &Vec<B2Point>, is_dynamic: bool) -> PhysicsObject {
+    pub fn create_body(&mut self, vertices: &Vec<WorldPoint>, is_dynamic: bool) -> PhysicsObject {
         let mut body_def = b2::BodyDef::new();
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
         }
 
         let body_handle: TypedHandle<b2::Body> = self.world.create_body(&body_def);
-        let body_box = b2::PolygonShape::new_with(&vertices);
+        let physics_vertices: Vec<B2Point> = vertices.iter().map(|v| world_to_physics(v)).collect();
+        let body_box = b2::PolygonShape::new_with(&physics_vertices);
 
         let mut fixture_def = b2::FixtureDef::new();
         fixture_def.density = 0.1;
@@ -120,12 +128,9 @@ impl PhysicsSystem {
         self.world.destroy_body(physics_object.body_handle);
     }
 
-    pub fn apply_force_to_center(&self, force: Point, physics_object: &PhysicsObject) {
-        let force_vec = &b2::Vec2 {
-            x: force.x,
-            y: force.y,
-        };
-        self.world.body_mut(physics_object.body_handle).apply_force_to_center(force_vec, true);
+    pub fn apply_force_to_center(&self, force: WorldPoint, physics_object: &PhysicsObject) {
+        let force_vec = world_to_physics(&force);
+        self.world.body_mut(physics_object.body_handle).apply_force_to_center(&force_vec, true);
     }
 
     pub fn get_transformation(&self, physics_object: &PhysicsObject) -> [[f32; 4]; 4] {
@@ -144,4 +149,11 @@ impl PhysicsSystem {
 pub struct PhysicsObject {
     transform: [[f32; 4]; 4],
     body_handle: TypedHandle<b2::Body>,
+}
+
+fn world_to_physics(world: &WorldPoint) -> B2Point {
+    return B2Point {
+        x: world[0] * SIZE_FACTOR,
+        y: world[1] * SIZE_FACTOR,
+    };
 }
