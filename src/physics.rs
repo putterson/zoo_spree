@@ -5,6 +5,9 @@ use self::wrapped2d::handle::TypedHandle;
 use self::wrapped2d::user_data::NoUserData;
 use self::wrapped2d::collision::shapes::Shape;
 use self::wrapped2d::collision::shapes::chain::ChainShape;
+use physics::wrapped2d::wrap::WrappedRef;
+use physics::wrapped2d::dynamics::body::ContactIter;
+use physics::wrapped2d::dynamics::contacts::Contact;
 
 use game::minigame::Point as WorldPoint;
 
@@ -28,7 +31,7 @@ const IDENTITY: [[f32; 4]; 4] =
 
 impl PhysicsSystem {
     pub fn new() -> PhysicsSystem {
-        let gravity = B2Point { x: 0., y: -10.0 };
+        let gravity = B2Point { x: 0., y: 0.0 };
         let world = b2::World::<NoUserData>::new(&gravity);
 
         PhysicsSystem { world: world }
@@ -41,7 +44,8 @@ impl PhysicsSystem {
     pub fn create_boundary_sensor(&mut self, vertices: &Vec<WorldPoint>) -> PhysicsObject {
         let mut body_def = b2::BodyDef::new();
 
-        body_def.body_type = b2::BodyType::Dynamic;
+//        body_def.body_type = b2::BodyType::Dynamic;
+
 
         let body_handle: TypedHandle<b2::Body> = self.world.create_body(&body_def);
 
@@ -50,8 +54,9 @@ impl PhysicsSystem {
         let chain_boundary = ChainShape::new_loop(&physics_vertices);
 
         let mut fixture_def = b2::FixtureDef::new();
-        fixture_def.density = 0.1;
-        fixture_def.friction = 1.0;
+        fixture_def.density = 0.0;
+        fixture_def.friction = 0.0;
+        fixture_def.is_sensor = true;
 
         self.world.body_mut(body_handle).create_fixture(&chain_boundary, &mut fixture_def);
 
@@ -144,11 +149,23 @@ impl PhysicsSystem {
 
         return transform_matrix;
     }
+
+    pub fn for_collisions(&self, physics_object: &PhysicsObject, callback: &mut FnMut(WrappedRef<Contact>) -> ()) {
+        let body = self.world.body(physics_object.body_handle);
+//        let wrapper = |a,b| {
+//            callback();
+//        };
+        for (_, contact_ref) in body.contacts() {
+            let contact = contact_ref;
+            callback(contact);
+        }
+    }
 }
 
 pub struct PhysicsObject {
     transform: [[f32; 4]; 4],
-    body_handle: TypedHandle<b2::Body>,
+    //TODO: un-pub this (used in checking if players handle == collision handle)
+    pub body_handle: TypedHandle<b2::Body>,
 }
 
 fn world_to_physics(world: &WorldPoint) -> B2Point {

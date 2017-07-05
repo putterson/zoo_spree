@@ -25,6 +25,7 @@ struct Shape {
 }
 
 struct Player {
+    alive: bool,
     controller_inst_id: Option<ID>,
     object: GameObject,
 }
@@ -102,6 +103,7 @@ impl GameState {
         };
 
         let player = Player {
+            alive: true,
             object: gameobject,
             controller_inst_id: controller_id,
         };
@@ -112,7 +114,7 @@ impl GameState {
     fn new_ring(&mut self,
                 draw_system: &mut DrawSystem,
                 physics_system: &mut PhysicsSystem) {
-        let (draw_object, physics_object) = create_ring(0.9, 0.95, [8.0, 0.05, 0.05], draw_system, physics_system);
+        let (draw_object, physics_object) = create_ring(0.9, 0.95, [0.8, 0.02, 0.02], draw_system, physics_system);
         self.ring = GameObject { components: Components { draw: Some(draw_object), physics: Some(physics_object) } };
     }
 
@@ -233,20 +235,43 @@ impl MiniGame for Sumo {
             }
         }
 
-        for player in &mut self.state.players {
-            match player.controller_inst_id {
-                Some(id) => {
-                    let maybe_ctrlr_state = input.get_controller_state(id);
-                    match (&player.object.components.physics, maybe_ctrlr_state) {
-                        (&Some(ref physics_object), Some(ctrlr_state)) => {
-                            let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32) * 55.0;
-                            let y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -55.0;
-                            physics.apply_force_to_center([x, y, 0.0], physics_object);
-                        }
-                        _ => { info!("Player does not have physics object or input system couldn't find assigned controller") }
+        {
+            let ring = &self.state.ring;
+            let players = &mut self.state.players;
+            let ring_phys = ring.components.physics.as_ref().expect("Ring must have a physics component");
+
+            let contacts = physics.for_collisions(&ring_phys, &mut |contact| {
+//                let mut players = &self.state.players;
+                let (body_handle, fixture_handle) = contact.fixture_b();
+
+                for player in players.iter_mut() {
+                    let mut alive = player.alive;
+                    let mut draw_obj = player.object.components.draw.as_mut().unwrap();
+                    let handle = &player.object.components.physics.as_ref().expect("Player must have a physics component").body_handle;
+                    if alive && handle == &body_handle {
+                        alive = false;
+                        draw.set_color(draw_obj);
                     }
                 }
-                _ => ()
+            });
+        }
+
+        for player in &mut self.state.players {
+            if player.alive {
+                match player.controller_inst_id {
+                    Some(id) => {
+                        let maybe_ctrlr_state = input.get_controller_state(id);
+                        match (&player.object.components.physics, maybe_ctrlr_state) {
+                            (&Some(ref physics_object), Some(ctrlr_state)) => {
+                                let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32);// * 55.0;
+                                let y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -1.0;// * -55.0;
+                                physics.apply_force_to_center([x, y, 0.0], physics_object);
+                            }
+                            _ => { info!("Player does not have physics object or input system couldn't find assigned controller") }
+                        }
+                    }
+                    _ => ()
+                }
             }
         }
 

@@ -183,6 +183,14 @@ impl DrawSystem {
         }
     }
 
+    pub fn set_color(&mut self, obj: &mut DrawObject) {
+        for vertex in obj.vertices.iter_mut() {
+            vertex.color = [1.0, 0.0, 0.0];
+        }
+
+        obj.update_model = true;
+    }
+
     pub fn create_draw_object(&mut self, vertices: Vec<Vertex>) -> DrawObject {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
