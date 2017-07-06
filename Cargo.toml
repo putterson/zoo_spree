@@ -5,10 +5,10 @@ authors = ["Pat Goebel <putterson@gmail.com>"]
 
 [dependencies]
 sdl2 = "0.29"
-gfx = { path = "dependencies/gfx/src/render" }
-gfx_core =  { path = "dependencies/gfx/src/core" }
-gfx_window_sdl = { path = "dependencies/gfx/src/window/sdl" }
-gfx_device_gl = { path = "dependencies/gfx/src/backend/gl" }
+gfx = "0.16.1"
+gfx_core = "0.7"
+gfx_window_sdl = "0.6"
+gfx_device_gl = "0.14.1"
 cgmath = "0.14"
 log = "0.3"
 env_logger = "*"
@@ -17,3 +17,10 @@ serde = "*"
 serde_derive = "*"
 wrapped2d = { path = "dependencies/rust_box2d"}
 stl = "0.2.0"
+gfx_text = "0.17.0"
+
+[replace]
+"gfx:0.16.1" = { git = "https://github.com/gfx-rs/gfx.git", branch = "v0.16" }
+"gfx_core:0.7.1" = { git = "https://github.com/gfx-rs/gfx.git", branch = "v0.16" }
+"gfx_window_sdl:0.6.0" = { git = "https://github.com/gfx-rs/gfx.git", branch = "v0.16" }
+"gfx_device_gl:0.14.1" = { git = "https://github.com/gfx-rs/gfx.git", branch = "v0.16" }
