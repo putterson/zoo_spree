@@ -60,7 +60,7 @@ pub fn main() {
     let mut physics_system = PhysicsSystem::new();
 
     // Init Input system
-    let mut input_system = InputSystem::new(&sdl_context);
+    let mut input_system = InputSystem::new(&sdl_context, config.input);
 
 
     // The active minigame

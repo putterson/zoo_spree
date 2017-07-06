@@ -7,6 +7,7 @@ use std::io::prelude::*;
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub video: VideoConfig,
+    pub input: InputConfig,
 }
 
 #[derive(Debug, Deserialize)]
@@ -41,6 +42,11 @@ impl VideoConfig {
         self.auto_x_resolution = Some(w);
         self.auto_y_resolution = Some(h);
      }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct InputConfig {
+    pub deadzone: u16,
 }
 
 const SETTINGS_FILE : &str = "settings.toml";

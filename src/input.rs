@@ -1,5 +1,7 @@
 use std::collections::VecDeque;
 
+use config::InputConfig;
+
 use sdl2::controller::GameController;
 use sdl2::controller::Button;
 use sdl2::controller::Axis;
@@ -15,6 +17,7 @@ pub enum InputEvent {
 }
 
 pub struct InputSystem {
+    config : InputConfig,
     sdl_controller_subsystem: GameControllerSubsystem,
     open_sdl_controllers: Vec<GameController>,
     controller_states: Vec<ControllerState>,
@@ -55,7 +58,7 @@ pub struct ControllerState {
 }
 
 impl InputSystem {
-    pub fn new(sdl_context: &Sdl) -> InputSystem {
+    pub fn new(sdl_context: &Sdl, config: InputConfig) -> InputSystem {
         // Initialize controller
         let controller_subsystem = sdl_context.game_controller().unwrap();
 
@@ -65,6 +68,7 @@ impl InputSystem {
         }
 
         return InputSystem {
+            config: config,
             sdl_controller_subsystem: controller_subsystem,
             open_sdl_controllers: vec![],
             controller_states: vec![],
@@ -91,7 +95,11 @@ impl InputSystem {
             Event::ControllerAxisMotion { which, axis, value, .. } => {
                 for c in self.controller_states.iter_mut() {
                     if c.inst_id == which {
-                        c.set_axis(axis, value);
+                        if (value as i32).abs() > self.config.deadzone as i32 {
+                            c.set_axis(axis,value);
+                        } else {
+                            c.set_axis(axis, 0);
+                        }
                     }
                 }
             }
@@ -193,14 +201,18 @@ impl<'a> From<&'a GameController> for ControllerState {
         state.set_button(Button::DPadLeft, controller.button(Button::DPadLeft));
         state.set_button(Button::DPadRight, controller.button(Button::DPadRight));
 
-        state.set_axis(Axis::TriggerLeft, controller.axis(Axis::TriggerLeft));
-        state.set_axis(Axis::TriggerRight, controller.axis(Axis::TriggerRight));
-        state.set_axis(Axis::LeftX, controller.axis(Axis::LeftX));
-        state.set_axis(Axis::LeftY, controller.axis(Axis::LeftY));
-        state.set_axis(Axis::RightX, controller.axis(Axis::RightX));
-        state.set_axis(Axis::RightY, controller.axis(Axis::RightY));
-
         return state;
+
+        //Avoid setting axes because we don't have deadzone information here
+//
+//        state.set_axis(Axis::TriggerLeft, controller.axis(Axis::TriggerLeft));
+//        state.set_axis(Axis::TriggerRight, controller.axis(Axis::TriggerRight));
+//        state.set_axis(Axis::LeftX, controller.axis(Axis::LeftX));
+//        state.set_axis(Axis::LeftY, controller.axis(Axis::LeftY));
+//        state.set_axis(Axis::RightX, controller.axis(Axis::RightX));
+//        state.set_axis(Axis::RightY, controller.axis(Axis::RightY));
+//
+//        return state;
     }
 }
 
