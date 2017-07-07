@@ -7,18 +7,21 @@ use gfx::Slice;
 use gfx::Bundle;
 
 use gfx_core::Device;
+use gfx_core::Factory;
 
 use sdl2::video::{Window, GLContext};
 use sdl2::Sdl;
 use sdl2::video::GLProfile;
 
 use gfx_window_sdl::Factory as SDLFactory;
-use gfx_core::Factory;
 use gfx_window_sdl;
 use gfx_device_gl::Resources;
 use gfx_device_gl::Device as GLDevice;
 use gfx_device_gl::CommandBuffer;
 use gfx_core::handle::{RenderTargetView, DepthStencilView};
+
+use gfx_text::{HorizontalAnchor, VerticalAnchor, Renderer};
+use gfx_text;
 
 use stl;
 use stl::Triangle;
@@ -89,20 +92,25 @@ const TRANSFORM: Transform = Transform {
         [0.0, 0.0, 0.0, 1.0]],
 };
 
-pub struct DrawObject {
-    vertices: Vec<Point>,
-    translation: [f32; 2],
-    rotation: f32,
-    pub transform: Transform,
-    bundle: Bundle<Resources, pipe::Data<Resources>>,
-    update_model: bool,
+pub enum DrawComponent {
+    Vertex {
+        vertices: Vec<Point>,
+        translation: [f32; 2],
+        rotation: f32,
+        transform: Transform,
+        bundle: Bundle<Resources, pipe::Data<Resources>>,
+        update_model: bool,
+    },
+    Text {
+        renderer: Renderer<Resources, SDLFactory>,
+    }
 }
 
-impl DrawObject {
-    fn new(vertices: Vec<Point>,
+impl DrawComponent {
+    fn new_vertex(vertices: Vec<Point>,
            bundle: Bundle<Resources, pipe::Data<Resources>>)
-           -> DrawObject {
-        DrawObject {
+           -> DrawComponent {
+        DrawComponent::Vertex {
             vertices: vertices,
             translation: [0.0, 0.0],
             rotation: 0.0,
@@ -110,12 +118,6 @@ impl DrawObject {
             bundle: bundle,
             update_model: true,
         }
-    }
-
-    // , transform: &b2::Transform
-    fn gfx_vertices(&self) -> Vec<Point> {
-        self.vertices
-            .clone()
     }
 }
 
@@ -183,15 +185,20 @@ impl DrawSystem {
         }
     }
 
-    pub fn set_color(&mut self, obj: &mut DrawObject) {
-        for vertex in obj.vertices.iter_mut() {
-            vertex.color = [1.0, 0.0, 0.0];
-        }
+    pub fn set_color(&mut self, obj: &mut DrawComponent) {
+        match obj {
+            &mut DrawComponent::Vertex {ref mut vertices, mut update_model, ..} => {
+                for vertex in vertices.iter_mut() {
+                    vertex.color = [1.0, 0.0, 0.0];
+                }
 
-        obj.update_model = true;
+                update_model = true;
+            }
+            _ => { info!("Unimplemeted set color for text"); }
+        }
     }
 
-    pub fn create_draw_object(&mut self, vertices: Vec<Vertex>) -> DrawObject {
+    pub fn create_draw_object(&mut self, vertices: Vec<Vertex>) -> DrawComponent {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
@@ -220,10 +227,10 @@ impl DrawSystem {
         };
 
 
-        return DrawObject::new(vertices, Bundle::new(slice, pso, data));
+        return DrawComponent::new_vertex(vertices, Bundle::new(slice, pso, data));
     }
 
-    pub fn create_draw_object_stl(&mut self, stl: &'static [u8], color: Color) -> DrawObject {
+    pub fn create_draw_object_stl(&mut self, stl: &'static [u8], color: Color) -> DrawComponent {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
@@ -258,7 +265,16 @@ impl DrawSystem {
             out: self.color_view.clone(),
         };
 
-        return DrawObject::new(vertices, Bundle::new(slice, pso, data));
+        return DrawComponent::new_vertex(vertices, Bundle::new(slice, pso, data));
+    }
+
+    pub fn create_text(&self) -> DrawComponent {
+        let mut normal_text = gfx_text::new(self.factory.clone()).with_outline(10, [1.0,0.0,1.0,1.0]).with_size(40).unwrap();
+        normal_text.add("test", [0,0], [1.0,1.0,1.0,1.0]);
+
+        return DrawComponent::Text {
+            renderer: normal_text,
+        };
     }
 
     pub fn resize(&mut self) -> () {
@@ -277,20 +293,28 @@ impl DrawSystem {
         self.resize = false;
     }
 
-    pub fn draw(&mut self, object: &mut DrawObject) -> () {
-        if self.resize {
-            object.bundle.data.out = self.color_view.clone();
-            // gfx_window_sdl::update_views(&self.window, &mut , &mut self.depth_view);
-        }
-        self.encoder.update_buffer(&object.bundle.data.transform, &[object.transform], 0).expect("Failed to update tranformation buffer");
+    pub fn draw(&mut self, object: &mut DrawComponent) -> () {
+        match object {
+            &mut DrawComponent::Vertex { vertices: ref vertices, bundle: ref mut bundle, update_model: mut update_model, transform: transform, .. }=> {
+                if self.resize {
+                    bundle.data.out = self.color_view.clone();
+                }
+                self.encoder.update_buffer(&bundle.data.transform, &[transform], 0).expect("Failed to update tranformation buffer");
 
-        if object.update_model {
-            self.encoder
-                .update_buffer(&object.bundle.data.vbuf, &object.gfx_vertices()[..], 0)
-                .expect("Failed to update vertex buffer");
-            object.update_model = false;
+                if update_model {
+                    self.encoder
+                        .update_buffer(&bundle.data.vbuf, &vertices.clone()[..], 0)
+                        .expect("Failed to update vertex buffer");
+                    update_model = false;
+                }
+
+                bundle.encode(&mut self.encoder)
+            }
+
+            &mut DrawComponent::Text { renderer: ref mut renderer } => {
+                renderer.draw(&mut self.encoder, &self.color_view).unwrap();
+            }
         }
 
-        object.bundle.encode(&mut self.encoder)
     }
 }

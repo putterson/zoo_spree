@@ -3,7 +3,7 @@ use std::i16;
 
 use input::InputSystem;
 
-use Components;
+use game::minigame::ComponentStore;
 
 use game::minigame::MiniGame;
 use game::minigame::create_ring;
@@ -16,6 +16,7 @@ use draw;
 use draw::Transform;
 use draw::Color;
 use draw::DrawSystem;
+use draw::DrawComponent;
 use input::ID;
 use input::InputEvent::{InputAdded, InputRemoved};
 
@@ -26,6 +27,9 @@ struct Shape {
 
 struct Player {
     alive: bool,
+    dead_for: u64,
+    //Steps
+    deaths: u64,
     controller_inst_id: Option<ID>,
     object: GameObject,
 }
@@ -40,7 +44,7 @@ impl GameState {
     fn new() -> GameState {
         GameState {
             objects: vec![],
-            ring: GameObject { components: Components { draw: None, physics: None } },
+            ring: GameObject { components: ComponentStore { draw: vec![], physics: vec![] } },
             players: vec![],
         }
     }
@@ -57,12 +61,13 @@ impl GameState {
         let vertices =
             shape.vertices.iter().map(|v| draw::Point::from_point_and_color(v, color)).collect();
 
-        let physics_object = Some(physics_system.create_body(&shape.vertices, is_dynamic));
+        let draw_object = draw_system.create_draw_object(vertices);
+        let physics_object = physics_system.create_body(&shape.vertices, is_dynamic);
 
         self.objects.push(GameObject {
-            components: Components {
-                draw: Some(draw_system.create_draw_object(vertices)),
-                physics: physics_object,
+            components: ComponentStore {
+                draw: vec![draw_object],
+                physics: vec![physics_object],
             },
         });
 
@@ -75,12 +80,13 @@ impl GameState {
                                physics_system: &mut PhysicsSystem,
                                is_dynamic: bool)
                                -> &'a GameObject {
-        let physics_object = Some(physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), is_dynamic));
+        let physics_object = physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), is_dynamic);
+        let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), [0.1, 0.6, 0.6]);
 
         self.objects.push(GameObject {
-            components: Components {
-                draw: Some(draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), [0.1, 0.6, 0.6])),
-                physics: physics_object,
+            components: ComponentStore {
+                draw: vec![draw_body_object],
+                physics: vec![physics_object],
             },
         });
 
@@ -93,18 +99,25 @@ impl GameState {
                          physics_system: &mut PhysicsSystem,
                          controller_id: Option<ID>
     ) {
-        let physics_object = Some(physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), true));
+        let physics_object = physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), true);
+
+        let text_object = draw_system.create_text();
+        let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), [0.3, 0.7, 0.7]);
 
         let gameobject = GameObject {
-            components: Components {
-                draw: Some(draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), [0.3, 0.7, 0.7])),
-                physics: physics_object,
+            components: ComponentStore {
+                draw: vec![draw_body_object, text_object],
+                physics: vec![physics_object],
             },
         };
 
+
         let player = Player {
             alive: true,
+            dead_for: 0,
+            deaths: 0,
             object: gameobject,
+            //            text: textobject,
             controller_inst_id: controller_id,
         };
 
@@ -115,7 +128,7 @@ impl GameState {
                 draw_system: &mut DrawSystem,
                 physics_system: &mut PhysicsSystem) {
         let (draw_object, physics_object) = create_ring(0.9, 0.95, [0.8, 0.02, 0.02], draw_system, physics_system);
-        self.ring = GameObject { components: Components { draw: Some(draw_object), physics: Some(physics_object) } };
+        self.ring = GameObject { components: ComponentStore { draw: vec![draw_object], physics: vec![physics_object] } };
     }
 
     fn remove_player_object_by_controller_id(&mut self,
@@ -128,8 +141,8 @@ impl GameState {
                     if id == player_controller_id {
                         let p_obj = &p.object.components.physics;
 
-                        if p_obj.is_some() {
-                            physics_system.destroy_body(p_obj.as_ref().unwrap());
+                        for p in p_obj {
+                            physics_system.destroy_body(p);
                         }
 
                         info!("Player removed from game");
@@ -146,7 +159,7 @@ impl GameState {
 }
 
 struct GameObject {
-    components: Components,
+    components: ComponentStore,
 }
 
 pub struct Sumo {
@@ -238,109 +251,97 @@ impl MiniGame for Sumo {
         {
             let ring = &self.state.ring;
             let players = &mut self.state.players;
-            let ring_phys = ring.components.physics.as_ref().expect("Ring must have a physics component");
+            let ring_phys = ring.components.physics.first().expect("Ring must have a physics component");
 
             let contacts = physics.for_collisions(&ring_phys, &mut |contact| {
-//                let mut players = &self.state.players;
+                //                let mut players = &self.state.players;
                 let (body_handle, fixture_handle) = contact.fixture_b();
 
                 for player in players.iter_mut() {
-                    let mut alive = player.alive;
-                    let mut draw_obj = player.object.components.draw.as_mut().unwrap();
-                    let handle = &player.object.components.physics.as_ref().expect("Player must have a physics component").body_handle;
-                    if alive && handle == &body_handle {
-                        alive = false;
-                        draw.set_color(draw_obj);
+                    let alive = player.alive;
+                    //                    let mut draw_obj = player.object.components.draw.as_mut().unwrap();
+                    for draw_obj in player.object.components.draw.iter_mut() {
+                        let handle = &player.object.components.physics.first().expect("Player must have a physics component").body_handle;
+                        if alive && handle == &body_handle {
+                            player.alive = false;
+                            player.deaths = player.deaths + 1;
+                            //TODO                        player.text.set_text("test deaths");
+                            draw.set_color(draw_obj);
+                        }
                     }
                 }
             });
         }
 
-        for player in &mut self.state.players {
+        for player in &mut self.state.players.iter_mut() {
             if player.alive {
-                match player.controller_inst_id {
-                    Some(id) => {
-                        let maybe_ctrlr_state = input.get_controller_state(id);
-                        match (&player.object.components.physics, maybe_ctrlr_state) {
-                            (&Some(ref physics_object), Some(ctrlr_state)) => {
-                                let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32);// * 55.0;
-                                let y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -1.0;// * -55.0;
-                                physics.apply_force_to_center([x, y, 0.0], physics_object);
-                            }
-                            _ => { info!("Player does not have physics object or input system couldn't find assigned controller") }
+                if let Some(id) = player.controller_inst_id {
+                    if let Some(physics_object) = player.object.components.physics.first() {
+                        if let Some(ctrlr_state) = input.get_controller_state(id) {
+                            let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32); // * 55.0;
+                            let y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -1.0; // * -55.0;
+                            physics.apply_force_to_center([x, y, 0.0], physics_object);
+                        } else {
+                            info!("Input system couldn't find assigned controller {:?}", id);
                         }
                     }
-                    _ => ()
                 }
+            } else {
+                player.dead_for = player.dead_for + 1;
             }
         }
 
         physics.step();
 
 
-        // Graphics step (just set the inputs)
-        for object in &mut self.state.objects {
-            //            let shape = &object.drawn_shape;
-            // Set the draw transform matrix for each object
-            match object.components.draw {
-                Some(ref mut draw_object) => {
-                    match object.components.physics {
-                        Some(ref physics_object) => {
-                            draw_object.transform = Transform {
+        // Graphics step (just set the component inputs)
+        for object in self.state.objects.iter_mut() {
+            for draw_object in object.components.draw.iter_mut() {
+                if let Some(ref physics_object) = object.components.physics.first() {
+                    match draw_object {
+                        &mut DrawComponent::Vertex { transform: mut transform, .. } => {
+                            transform = Transform {
                                 transform: physics.get_transformation(&physics_object),
                             }
                         }
-                        None => (),
+                        _ => ()
                     }
                 }
-                None => (),
             }
         }
 
         for player in &mut self.state.players {
             //            let shape = &object.drawn_shape;
             // Set the draw transform matrix for each object
-            match player.object.components.draw {
-                Some(ref mut draw_object) => {
-                    match player.object.components.physics {
-                        Some(ref physics_object) => {
-                            draw_object.transform = Transform {
+            if let Some(ref physics_object) = player.object.components.physics.first() {
+                for draw_object in player.object.components.draw.iter_mut() {
+                    match draw_object {
+                        &mut DrawComponent::Vertex { transform: mut transform, .. } => {
+                            transform = Transform {
                                 transform: physics.get_transformation(&physics_object),
                             }
                         }
-                        None => (),
+                        _ => ()
                     }
                 }
-                None => (),
             }
         }
     }
 
     fn render(&mut self, draw_system: &mut DrawSystem) -> () {
-        match self.state.ring.components.draw {
-            Some(ref mut draw_object) => {
-                draw_system.draw(draw_object)
-            }
-            None => (),
+        for draw_object in &mut self.state.ring.components.draw {
+            draw_system.draw(draw_object)
         }
 
         for object in &mut self.state.objects {
-            match object.components.draw {
-                Some(ref mut draw_object) => {
-                    // let draw_o : &mut DrawObject =
-                    draw_system.draw(draw_object);
-                }
-                None => (),
+            for draw_object in &mut object.components.draw {
+                draw_system.draw(draw_object)
             }
         }
 
-        for player in &mut self.state.players {
-            match player.object.components.draw {
-                Some(ref mut draw_object) => {
-                    // let draw_o : &mut DrawObject =
-                    draw_system.draw(draw_object);
-                }
-                None => (),
+        for player in &mut self.state.players.iter_mut() {
+            for draw_object in &mut player.object.components.draw {
+                draw_system.draw(draw_object)
             }
         }
     }

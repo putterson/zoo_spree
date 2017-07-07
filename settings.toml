@@ -7,3 +7,4 @@ scale = 2
 
 [input]
 deadzone = 2000
+keyboard = true #Use keyboard in addition to gamepad 0

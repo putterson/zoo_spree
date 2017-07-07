@@ -12,6 +12,8 @@ extern crate gfx_window_sdl;
 extern crate gfx_device_gl;
 extern crate sdl2;
 
+extern crate gfx_text;
+
 extern crate cgmath;
 
 extern crate stl;
@@ -25,7 +27,7 @@ mod physics;
 use input::{InputSystem, ControllerState};
 
 use draw::DrawSystem;
-use draw::DrawObject;
+use draw::DrawComponent;
 
 use physics::PhysicsObject;
 use physics::PhysicsSystem;
@@ -109,7 +111,7 @@ pub fn main() {
     }
 }
 
-struct Components {
-    draw: Option<DrawObject>,
-    physics: Option<PhysicsObject>
+enum Component {
+    Physics(PhysicsObject),
+    Draw(DrawComponent),
 }

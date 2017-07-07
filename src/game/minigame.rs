@@ -1,7 +1,7 @@
 use input::InputSystem;
 use draw;
 use draw::DrawSystem;
-use draw::DrawObject;
+use draw::DrawComponent;
 use physics::PhysicsSystem;
 use physics::PhysicsObject;
 use physics::B2Point;
@@ -19,7 +19,7 @@ pub trait MiniGame
 pub type Point = [f32; 3];
 pub type Color = [f32; 3];
 
-pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physics: &mut PhysicsSystem) -> (DrawObject, PhysicsObject) {
+pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physics: &mut PhysicsSystem) -> (DrawComponent, PhysicsObject) {
     let pi = std::f32::consts::PI;
 
     let mut vertices: Vec<draw::Point> = vec![];
@@ -78,4 +78,9 @@ pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physic
     let physics_object = physics.create_boundary_sensor(&bounding);
 
     return (draw_object, physics_object);
+}
+
+pub struct ComponentStore {
+    pub draw: Vec<DrawComponent>,
+    pub physics: Vec<PhysicsObject>,
 }

@@ -47,6 +47,7 @@ impl VideoConfig {
 #[derive(Debug, Deserialize)]
 pub struct InputConfig {
     pub deadzone: u16,
+    pub keyboard: bool,
 }
 
 const SETTINGS_FILE : &str = "settings.toml";
