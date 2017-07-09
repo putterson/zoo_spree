@@ -269,7 +269,7 @@ impl DrawSystem {
     }
 
     pub fn create_text(&self) -> DrawComponent {
-        let mut normal_text = gfx_text::new(self.factory.clone()).with_outline(10, [1.0, 0.0, 1.0, 1.0]).with_size(40).unwrap();
+        let mut normal_text = gfx_text::new(self.factory.clone()).with_size(60).unwrap();
         normal_text.add("test", [0, 0], [1.0, 1.0, 1.0, 1.0]);
 
         return DrawComponent::Text {

@@ -11,6 +11,7 @@ pub trait MiniGame
 
 {
     fn new(draw: &mut DrawSystem, physics: &mut PhysicsSystem, input: &InputSystem) -> Self;
+    fn done(&self) -> bool;
     fn step(&mut self, draw: &mut DrawSystem, physics: &mut PhysicsSystem, input: &mut InputSystem) -> ();
     fn render(&mut self, draw: &mut DrawSystem) -> ();
 }
@@ -26,9 +27,10 @@ pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physic
     let mut bounding: Vec<Point> = vec![];
 
     //Number of points along the edge
-    let steps: i32 = 64;
+    let steps: i32 = 128;
     let angle_step = (2.0 * pi) / steps as f32;
-    let bounding_diameter = od;
+    //TODO fix fudge factor
+    let bounding_diameter = od * 1.15;
 
     //Physics bounds
     for n in 0..steps {

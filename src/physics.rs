@@ -44,7 +44,7 @@ impl PhysicsSystem {
     pub fn create_boundary_sensor(&mut self, vertices: &Vec<WorldPoint>) -> PhysicsObject {
         let mut body_def = b2::BodyDef::new();
 
-//        body_def.body_type = b2::BodyType::Dynamic;
+        body_def.body_type = b2::BodyType::Static;
 
 
         let body_handle: TypedHandle<b2::Body> = self.world.create_body(&body_def);
@@ -92,6 +92,10 @@ impl PhysicsSystem {
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
         }
+
+        body_def.linear_damping = 0.5;
+        body_def.angular_damping = 0.5;
+
         use std::io::Cursor;
 
         let mut model_reader = Cursor::new(stl.iter());

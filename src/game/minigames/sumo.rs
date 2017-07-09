@@ -1,6 +1,9 @@
 use std::f32;
 use std::i16;
 
+use std::io;
+use std::io::Write;
+
 use input::InputSystem;
 
 use game::minigame::ComponentStore;
@@ -30,6 +33,8 @@ struct Player {
     dead_for: u64,
     //Steps
     deaths: u64,
+    name: String,
+    color: Color,
     controller_inst_id: Option<ID>,
     object: GameObject,
 }
@@ -97,12 +102,14 @@ impl GameState {
     fn new_player_object(&mut self,
                          draw_system: &mut DrawSystem,
                          physics_system: &mut PhysicsSystem,
+                         color: Color,
+                         name: String,
                          controller_id: Option<ID>
     ) {
         let physics_object = physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), true);
 
         let text_object = draw_system.create_text();
-        let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), [0.3, 0.7, 0.7]);
+        let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), color);
 
         let gameobject = GameObject {
             components: ComponentStore {
@@ -116,12 +123,41 @@ impl GameState {
             alive: true,
             dead_for: 0,
             deaths: 0,
+            color: color,
+            name: name,
             object: gameobject,
             //            text: textobject,
             controller_inst_id: controller_id,
         };
 
         self.players.push(player);
+    }
+
+    fn revive_player_object(&mut self,
+                            draw_system: &mut DrawSystem,
+                            physics_system: &mut PhysicsSystem
+    ) {
+        for player_object in self.players.iter_mut() {
+            for old_phy_obj in player_object.object.components.physics.iter_mut() {
+                physics_system.destroy_body(old_phy_obj)
+            }
+
+            let physics_object = physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), true);
+
+            let text_object = draw_system.create_text();
+            let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), player_object.color);
+
+            let gameobject = GameObject {
+                components: ComponentStore {
+                    draw: vec![draw_body_object, text_object],
+                    physics: vec![physics_object],
+                },
+            };
+
+
+            player_object.object = gameobject;
+            player_object.alive = true;
+        }
     }
 
     fn new_ring(&mut self,
@@ -224,12 +260,39 @@ impl MiniGame for Sumo {
         Sumo { state: state }
     }
 
+    fn done(&self) -> bool {
+        if self.state.players.iter().filter(|i| i.alive).count() <= 1 {
+            return true;
+        }
+
+        return false;
+    }
+
     fn step(&mut self, draw: &mut DrawSystem, physics: &mut PhysicsSystem, input: &mut InputSystem) {
         // Handle input events
+
+        if self.done() {
+            for player in self.state.players.iter() {
+                print!("{:?} deaths {:?} ||", player.name, player.deaths);
+
+                io::stdout().flush().unwrap();
+            }
+            println!("");
+            self.state.revive_player_object(draw, physics);
+        }
+
         'events: loop {
             match input.event() {
                 Some(InputAdded(id)) => {
-                    self.state.new_player_object(draw, physics, Some(id));
+                    let player_colors = [
+                        ([1.0, 1.0, 0.0], "Yellow"),
+                        ([0.0, 1.0, 0.0], "Green"),
+                        ([0.0, 0.0, 1.0], "Blue"),
+                        ([0.0, 1.0, 1.0], "Cyan"),
+                    ];
+
+                    let (color, name) = player_colors[id as usize];
+                    self.state.new_player_object(draw, physics, color, name.into(), Some(id));
                     info!("New player added to game");
                 }
                 Some(InputRemoved(id)) => {
@@ -256,9 +319,11 @@ impl MiniGame for Sumo {
                     for draw_obj in player.object.components.draw.iter_mut() {
                         let handle = &player.object.components.physics.first().expect("Player must have a physics component").body_handle;
                         if alive && handle == &body_handle {
+                            if player.alive {
+                                player.deaths = player.deaths + 1;
+                            }
                             player.alive = false;
-                            player.deaths = player.deaths + 1;
-                            //TODO                        player.text.set_text("test deaths");
+//                            TODO                        player.text.set_text("test deaths");
                             draw.set_color(draw_obj);
                         }
                     }
