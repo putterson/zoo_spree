@@ -1,10 +1,12 @@
 use std::collections::VecDeque;
+use std;
 
 use config::InputConfig;
 
 use sdl2::controller::GameController;
 use sdl2::controller::Button;
 use sdl2::controller::Axis;
+use sdl2::keyboard::Keycode;
 use sdl2::event::Event;
 use sdl2::GameControllerSubsystem;
 use sdl2::Sdl;
@@ -17,7 +19,7 @@ pub enum InputEvent {
 }
 
 pub struct InputSystem {
-    config : InputConfig,
+    config: InputConfig,
     sdl_controller_subsystem: GameControllerSubsystem,
     open_sdl_controllers: Vec<GameController>,
     controller_states: Vec<ControllerState>,
@@ -25,6 +27,7 @@ pub struct InputSystem {
 }
 
 pub type ID = i32;
+const KEYBOARD_ID: ID = -1;
 
 #[derive(Default)]
 #[derive(Debug)]
@@ -67,12 +70,23 @@ impl InputSystem {
             controller_subsystem.set_event_state(true);
         }
 
+        let mut controller_states: Vec<ControllerState> = vec![];
+        let mut event_queue = VecDeque::new();
+
+        if config.keyboard {
+            let mut keyboard_controller = ControllerState::default();
+            keyboard_controller.inst_id = KEYBOARD_ID;
+            controller_states.push(keyboard_controller);
+            event_queue.push_back(InputAdded(KEYBOARD_ID));
+            info!("Keyboard enabled as controller {:?}.", KEYBOARD_ID);
+        }
+
         return InputSystem {
             config: config,
             sdl_controller_subsystem: controller_subsystem,
             open_sdl_controllers: vec![],
-            controller_states: vec![],
-            event_queue: VecDeque::new(),
+            controller_states: controller_states,
+            event_queue: event_queue,
         }
     }
 
@@ -96,7 +110,7 @@ impl InputSystem {
                 for c in self.controller_states.iter_mut() {
                     if c.inst_id == which {
                         if (value as i32).abs() > self.config.deadzone as i32 {
-                            c.set_axis(axis,value);
+                            c.set_axis(axis, value);
                         } else {
                             c.set_axis(axis, 0);
                         }
@@ -128,7 +142,43 @@ impl InputSystem {
                 info!("Controller state size {:?}", self.controller_states.len());
                 debug_controllers(&self.open_sdl_controllers);
             }
-            _ => {}
+            _ => {
+                if self.config.keyboard {
+                    self.update_keyboard(event);
+                }
+            }
+        }
+    }
+
+    fn update_keyboard(&mut self, event: Event) {
+        match event {
+            Event::KeyDown { keycode: Some(keycode), .. }  => {
+                self.handle_axis_key(keycode, std::i16::MAX);
+            }
+            Event::KeyUp { keycode: Some(keycode), ..} => {
+                self.handle_axis_key(keycode, 0);
+            }
+            _ => ()
+        }
+    }
+
+    fn map_key_to_axis(key: Keycode) -> Option<(Axis, i16)> {
+        match key {
+            Keycode::W => Some((Axis::LeftY, -1)),
+            Keycode::S => Some((Axis::LeftY, 1)),
+            Keycode::A => Some((Axis::LeftX, -1)),
+            Keycode::D => Some((Axis::LeftX, 1)),
+            _ => None,
+        }
+    }
+
+    fn handle_axis_key(&mut self, key: Keycode, value: i16) {
+        if let Some((axis, direction)) = InputSystem::map_key_to_axis(key) {
+            for c in self.controller_states.iter_mut() {
+                if c.inst_id == KEYBOARD_ID {
+                    c.set_axis(axis, value * direction);
+                }
+            }
         }
     }
 
@@ -204,15 +254,15 @@ impl<'a> From<&'a GameController> for ControllerState {
         return state;
 
         //Avoid setting axes because we don't have deadzone information here
-//
-//        state.set_axis(Axis::TriggerLeft, controller.axis(Axis::TriggerLeft));
-//        state.set_axis(Axis::TriggerRight, controller.axis(Axis::TriggerRight));
-//        state.set_axis(Axis::LeftX, controller.axis(Axis::LeftX));
-//        state.set_axis(Axis::LeftY, controller.axis(Axis::LeftY));
-//        state.set_axis(Axis::RightX, controller.axis(Axis::RightX));
-//        state.set_axis(Axis::RightY, controller.axis(Axis::RightY));
-//
-//        return state;
+        //
+        //        state.set_axis(Axis::TriggerLeft, controller.axis(Axis::TriggerLeft));
+        //        state.set_axis(Axis::TriggerRight, controller.axis(Axis::TriggerRight));
+        //        state.set_axis(Axis::LeftX, controller.axis(Axis::LeftX));
+        //        state.set_axis(Axis::LeftY, controller.axis(Axis::LeftY));
+        //        state.set_axis(Axis::RightX, controller.axis(Axis::RightX));
+        //        state.set_axis(Axis::RightY, controller.axis(Axis::RightY));
+        //
+        //        return state;
     }
 }
 

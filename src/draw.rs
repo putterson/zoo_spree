@@ -108,8 +108,8 @@ pub enum DrawComponent {
 
 impl DrawComponent {
     fn new_vertex(vertices: Vec<Point>,
-           bundle: Bundle<Resources, pipe::Data<Resources>>)
-           -> DrawComponent {
+                  bundle: Bundle<Resources, pipe::Data<Resources>>)
+                  -> DrawComponent {
         DrawComponent::Vertex {
             vertices: vertices,
             translation: [0.0, 0.0],
@@ -187,7 +187,7 @@ impl DrawSystem {
 
     pub fn set_color(&mut self, obj: &mut DrawComponent) {
         match obj {
-            &mut DrawComponent::Vertex {ref mut vertices, mut update_model, ..} => {
+            &mut DrawComponent::Vertex { ref mut vertices, mut update_model, .. } => {
                 for vertex in vertices.iter_mut() {
                     vertex.color = [1.0, 0.0, 0.0];
                 }
@@ -269,8 +269,8 @@ impl DrawSystem {
     }
 
     pub fn create_text(&self) -> DrawComponent {
-        let mut normal_text = gfx_text::new(self.factory.clone()).with_outline(10, [1.0,0.0,1.0,1.0]).with_size(40).unwrap();
-        normal_text.add("test", [0,0], [1.0,1.0,1.0,1.0]);
+        let mut normal_text = gfx_text::new(self.factory.clone()).with_outline(10, [1.0, 0.0, 1.0, 1.0]).with_size(40).unwrap();
+        normal_text.add("test", [0, 0], [1.0, 1.0, 1.0, 1.0]);
 
         return DrawComponent::Text {
             renderer: normal_text,
@@ -295,11 +295,12 @@ impl DrawSystem {
 
     pub fn draw(&mut self, object: &mut DrawComponent) -> () {
         match object {
-            &mut DrawComponent::Vertex { vertices: ref vertices, bundle: ref mut bundle, update_model: mut update_model, transform: transform, .. }=> {
+            &mut DrawComponent::Vertex { ref vertices, ref mut bundle, mut update_model, ref transform, .. } => {
                 if self.resize {
                     bundle.data.out = self.color_view.clone();
                 }
-                self.encoder.update_buffer(&bundle.data.transform, &[transform], 0).expect("Failed to update tranformation buffer");
+
+                self.encoder.update_constant_buffer(&bundle.data.transform, transform);
 
                 if update_model {
                     self.encoder
@@ -315,6 +316,5 @@ impl DrawSystem {
                 renderer.draw(&mut self.encoder, &self.color_view).unwrap();
             }
         }
-
     }
 }

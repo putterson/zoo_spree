@@ -96,7 +96,9 @@ pub fn main() {
 
                 Event::Quit { .. } |
                 Event::KeyDown { keycode: Some(Keycode::Escape), .. } => break 'running,
-                _ => {}
+                _ => {
+                    input_system.update(event);
+                }
             }
         }
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));

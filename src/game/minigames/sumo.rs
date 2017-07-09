@@ -221,18 +221,11 @@ impl MiniGame for Sumo {
                               },
                               false);
 
-        for controller_id in input.controller_ids() {
-            state.new_player_object(draw, physics, Some(controller_id));
-        }
-
-        state.new_draw_object_stl(draw, physics, true);
-
         Sumo { state: state }
     }
 
     fn step(&mut self, draw: &mut DrawSystem, physics: &mut PhysicsSystem, input: &mut InputSystem) {
         // Handle input events
-
         'events: loop {
             match input.event() {
                 Some(InputAdded(id)) => {
@@ -299,7 +292,7 @@ impl MiniGame for Sumo {
             for draw_object in object.components.draw.iter_mut() {
                 if let Some(ref physics_object) = object.components.physics.first() {
                     match draw_object {
-                        &mut DrawComponent::Vertex { transform: mut transform, .. } => {
+                        &mut DrawComponent::Vertex { mut transform, .. } => {
                             transform = Transform {
                                 transform: physics.get_transformation(&physics_object),
                             }
@@ -316,10 +309,8 @@ impl MiniGame for Sumo {
             if let Some(ref physics_object) = player.object.components.physics.first() {
                 for draw_object in player.object.components.draw.iter_mut() {
                     match draw_object {
-                        &mut DrawComponent::Vertex { transform: mut transform, .. } => {
-                            transform = Transform {
-                                transform: physics.get_transformation(&physics_object),
-                            }
+                        &mut DrawComponent::Vertex { ref mut transform, .. } => {
+                            transform.transform = physics.get_transformation(&physics_object);
                         }
                         _ => ()
                     }
