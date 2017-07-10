@@ -102,6 +102,8 @@ pub enum DrawComponent {
         update_model: bool,
     },
     Text {
+        color: Color,
+        text: String,
         renderer: Renderer<Resources, SDLFactory>,
     }
 }
@@ -185,16 +187,18 @@ impl DrawSystem {
         }
     }
 
-    pub fn set_color(&mut self, obj: &mut DrawComponent) {
+    pub fn set_color(&mut self, obj: &mut DrawComponent, new_color: Color) {
         match obj {
             &mut DrawComponent::Vertex { ref mut vertices, mut update_model, .. } => {
                 for vertex in vertices.iter_mut() {
-                    vertex.color = [1.0, 0.0, 0.0];
+                    vertex.color = new_color;
                 }
 
                 update_model = true;
             }
-            _ => { info!("Unimplemeted set color for text"); }
+            &mut DrawComponent::Text { mut color, ..} => {
+                color = new_color;
+            }
         }
     }
 
@@ -270,9 +274,9 @@ impl DrawSystem {
 
     pub fn create_text(&self) -> DrawComponent {
         let mut normal_text = gfx_text::new(self.factory.clone()).with_size(60).unwrap();
-        normal_text.add("test", [0, 0], [1.0, 1.0, 1.0, 1.0]);
-
         return DrawComponent::Text {
+            text: "".to_owned(),
+            color: [0.0,0.0,0.0],
             renderer: normal_text,
         };
     }
@@ -312,7 +316,8 @@ impl DrawSystem {
                 bundle.encode(&mut self.encoder)
             }
 
-            &mut DrawComponent::Text { renderer: ref mut renderer } => {
+            &mut DrawComponent::Text { ref color, ref text, renderer: ref mut renderer } => {
+                renderer.add(text.as_ref(), [0, 0], [color[0], color[1], color[2], 1.0]);
                 renderer.draw(&mut self.encoder, &self.color_view).unwrap();
             }
         }

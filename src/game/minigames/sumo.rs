@@ -113,7 +113,7 @@ impl GameState {
 
         let gameobject = GameObject {
             components: ComponentStore {
-                draw: vec![draw_body_object, text_object],
+                draw: vec![text_object, draw_body_object],
                 physics: vec![physics_object],
             },
         };
@@ -261,7 +261,12 @@ impl MiniGame for Sumo {
     }
 
     fn done(&self) -> bool {
-        if self.state.players.iter().filter(|i| i.alive).count() <= 1 {
+        let single_player = match self.state.players.len() {
+            1 => 1,
+            _ => 0,
+        };
+
+        if self.state.players.iter().filter(|i| i.alive).count() <= 1 - single_player {
             return true;
         }
 
@@ -285,13 +290,15 @@ impl MiniGame for Sumo {
             match input.event() {
                 Some(InputAdded(id)) => {
                     let player_colors = [
-                        ([1.0, 1.0, 0.0], "Yellow"),
+                        ([1.0, 0.0, 0.0], "Red"),
                         ([0.0, 1.0, 0.0], "Green"),
                         ([0.0, 0.0, 1.0], "Blue"),
                         ([0.0, 1.0, 1.0], "Cyan"),
+                        ([1.0, 0.0, 1.0], "Magenta"),
+                        ([1.0, 1.0, 0.0], "Yellow"),
                     ];
 
-                    let (color, name) = player_colors[id as usize];
+                    let (color, name) = player_colors[id as usize % player_colors.len()];
                     self.state.new_player_object(draw, physics, color, name.into(), Some(id));
                     info!("New player added to game");
                 }
@@ -323,8 +330,8 @@ impl MiniGame for Sumo {
                                 player.deaths = player.deaths + 1;
                             }
                             player.alive = false;
-//                            TODO                        player.text.set_text("test deaths");
-                            draw.set_color(draw_obj);
+                            //TODO set text of player here;
+                            draw.set_color(draw_obj,[0.05, 0.05, 0.05]);
                         }
                     }
                 }
