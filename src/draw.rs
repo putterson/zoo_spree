@@ -92,34 +92,61 @@ const TRANSFORM: Transform = Transform {
         [0.0, 0.0, 0.0, 1.0]],
 };
 
-pub enum DrawComponent {
-    Vertex {
-        vertices: Vec<Point>,
-        translation: [f32; 2],
-        rotation: f32,
-        transform: Transform,
-        bundle: Bundle<Resources, pipe::Data<Resources>>,
-        update_model: bool,
-    },
-    Text {
-        color: Color,
-        text: String,
-        renderer: Renderer<Resources, SDLFactory>,
+pub trait DrawComponent {
+    fn set_color(&mut self, new_color: Color);
+    fn draw(&mut self, resize: bool, encoder : &mut Encoder<Resources, CommandBuffer>, color_view: &RenderTargetView<Resources, ColorFormat>);
+}
+
+pub struct VertexComponent {
+    vertices: Vec<Point>,
+    translation: [f32; 2],
+    rotation: f32,
+    pub transform: Transform,
+    bundle: Bundle<Resources, pipe::Data<Resources>>,
+    update_model: bool,
+}
+
+impl DrawComponent for VertexComponent {
+    fn set_color(&mut self, new_color: Color) {
+        for vertex in self.vertices.iter_mut() {
+            vertex.color = new_color;
+        }
+
+        self.update_model = true;
+    }
+
+    fn draw(&mut self, resize : bool, encoder: &mut Encoder<Resources, CommandBuffer>, color_view: &RenderTargetView<Resources, ColorFormat>) {
+        if resize {
+            self.bundle.data.out = color_view.clone();
+        }
+
+        encoder.update_constant_buffer(&self.bundle.data.transform, &self.transform);
+
+        if self.update_model {
+            encoder
+                .update_buffer(&self.bundle.data.vbuf, &self.vertices.clone()[..], 0)
+                .expect("Failed to update vertex buffer");
+            self.update_model = false;
+        }
+
+        self.bundle.encode(encoder)
     }
 }
 
-impl DrawComponent {
-    fn new_vertex(vertices: Vec<Point>,
-                  bundle: Bundle<Resources, pipe::Data<Resources>>)
-                  -> DrawComponent {
-        DrawComponent::Vertex {
-            vertices: vertices,
-            translation: [0.0, 0.0],
-            rotation: 0.0,
-            transform: TRANSFORM,
-            bundle: bundle,
-            update_model: true,
-        }
+
+pub struct TextComponent {
+    pub color: Color,
+    pub text: String,
+    renderer: Renderer<Resources, SDLFactory>,
+}
+
+impl DrawComponent for TextComponent {
+    fn set_color(&mut self, new_color: Color) {
+        self.color = new_color;
+    }
+    fn draw(&mut self, resize: bool, encoder: &mut Encoder<Resources, CommandBuffer>, color_view: &RenderTargetView<Resources, ColorFormat>) {
+        self.renderer.add(self.text.as_ref(), [0, 0], [self.color[0], self.color[1], self.color[2], 1.0]);
+        self.renderer.draw(encoder, color_view).unwrap();
     }
 }
 
@@ -160,7 +187,7 @@ impl DrawSystem {
         let h = config.y_resolution();
 
         if config.auto_resolution() {
-            info!("Using current (scaled) resolution {:?}x{:?}", w, h);
+            info! ("Using current (scaled) resolution {:?}x{:?}", w, h);
         }
 
         let mut builder = video_subsystem.window("Zoo Spree", w, h);
@@ -187,22 +214,20 @@ impl DrawSystem {
         }
     }
 
-    pub fn set_color(&mut self, obj: &mut DrawComponent, new_color: Color) {
-        match obj {
-            &mut DrawComponent::Vertex { ref mut vertices, mut update_model, .. } => {
-                for vertex in vertices.iter_mut() {
-                    vertex.color = new_color;
-                }
-
-                update_model = true;
-            }
-            &mut DrawComponent::Text { mut color, ..} => {
-                color = new_color;
-            }
+    pub fn new_vertex_component(vertices: Vec<Point>,
+                                bundle: Bundle<Resources, pipe::Data<Resources>>)
+                                -> VertexComponent {
+        VertexComponent {
+            vertices: vertices,
+            translation: [0.0, 0.0],
+            rotation: 0.0,
+            transform: TRANSFORM,
+            bundle: bundle,
+            update_model: true,
         }
     }
 
-    pub fn create_draw_object(&mut self, vertices: Vec<Vertex>) -> DrawComponent {
+    pub fn create_draw_object(&mut self, vertices: Vec<Vertex>) -> VertexComponent {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
@@ -231,10 +256,10 @@ impl DrawSystem {
         };
 
 
-        return DrawComponent::new_vertex(vertices, Bundle::new(slice, pso, data));
+        return DrawSystem::new_vertex_component(vertices, Bundle::new(slice, pso, data));
     }
 
-    pub fn create_draw_object_stl(&mut self, stl: &'static [u8], color: Color) -> DrawComponent {
+    pub fn create_draw_object_stl(&mut self, stl: &'static [u8], color: Color) -> VertexComponent {
         let pso = self.factory
             .create_pipeline_simple(include_bytes!("shader/triangle_150.glslv"),
                                     include_bytes!("shader/triangle_150.glslf"),
@@ -269,14 +294,14 @@ impl DrawSystem {
             out: self.color_view.clone(),
         };
 
-        return DrawComponent::new_vertex(vertices, Bundle::new(slice, pso, data));
+        return DrawSystem::new_vertex_component(vertices, Bundle::new(slice, pso, data));
     }
 
-    pub fn create_text(&self) -> DrawComponent {
+    pub fn create_text(&self) -> TextComponent {
         let mut normal_text = gfx_text::new(self.factory.clone()).with_size(60).unwrap();
-        return DrawComponent::Text {
+        return TextComponent {
             text: "".to_owned(),
-            color: [0.0,0.0,0.0],
+            color: [1.0, 1.0, 1.0],
             renderer: normal_text,
         };
     }
@@ -298,28 +323,6 @@ impl DrawSystem {
     }
 
     pub fn draw(&mut self, object: &mut DrawComponent) -> () {
-        match object {
-            &mut DrawComponent::Vertex { ref vertices, ref mut bundle, mut update_model, ref transform, .. } => {
-                if self.resize {
-                    bundle.data.out = self.color_view.clone();
-                }
-
-                self.encoder.update_constant_buffer(&bundle.data.transform, transform);
-
-                if update_model {
-                    self.encoder
-                        .update_buffer(&bundle.data.vbuf, &vertices.clone()[..], 0)
-                        .expect("Failed to update vertex buffer");
-                    update_model = false;
-                }
-
-                bundle.encode(&mut self.encoder)
-            }
-
-            &mut DrawComponent::Text { ref color, ref text, renderer: ref mut renderer } => {
-                renderer.add(text.as_ref(), [0, 0], [color[0], color[1], color[2], 1.0]);
-                renderer.draw(&mut self.encoder, &self.color_view).unwrap();
-            }
-        }
+        object.draw(self.resize, &mut self.encoder, &self. color_view)
     }
 }

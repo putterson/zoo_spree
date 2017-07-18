@@ -16,6 +16,8 @@ use draw;
 use draw::Color;
 use draw::DrawSystem;
 use draw::DrawComponent;
+use draw::VertexComponent;
+use draw::TextComponent;
 use input::ID;
 use input::InputEvent::{InputAdded, InputRemoved};
 
@@ -32,8 +34,8 @@ struct Player {
     name: String,
     color: Color,
     controller_inst_id: Option<ID>,
-    draw_component: DrawComponent,
-    death_count_text: DrawComponent,
+    draw_component: VertexComponent,
+    death_count_text: TextComponent,
     physics_component: PhysicsObject,
     //    object: GameObject,
 }
@@ -45,12 +47,12 @@ struct GameState {
 }
 
 struct Ring {
-    draw_component: DrawComponent,
+    draw_component: VertexComponent,
     physics_component: PhysicsObject,
 }
 
 struct Wall {
-    draw_component: DrawComponent,
+    draw_component: VertexComponent,
     physics_component: PhysicsObject,
 }
 
@@ -83,7 +85,9 @@ impl GameState {
     ) -> Player {
         let physics_object = physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), true);
 
-        let text_object = draw_system.create_text();
+        let mut text_object = draw_system.create_text();
+        text_object.text = format!("{}", 0);
+        text_object.color = color;
         let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), color);
 
         Player {
@@ -108,11 +112,11 @@ impl GameState {
 
             let physics_object = physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), true);
 
-            let text_object = draw_system.create_text();
+//            let text_object = draw_system.create_text();
             let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), player_object.color);
 
             player_object.draw_component = draw_body_object;
-            player_object.death_count_text = text_object;
+//            player_object.death_count_text;
             player_object.physics_component = physics_object;
 
             player_object.alive = true;
@@ -234,18 +238,11 @@ impl MiniGame for Sumo {
     }
 
     fn step(&mut self, draw: &mut DrawSystem, physics: &mut PhysicsSystem, input: &mut InputSystem) {
-        // Handle input events
-
         if self.done() {
-            for player in self.state.players.iter() {
-                print!("{:?} deaths {:?} ||", player.name, player.deaths);
-
-                io::stdout().flush().unwrap();
-            }
-            println!("");
             self.state.revive_player_object(draw, physics);
         }
 
+        // Handle input events
         'events: loop {
             match input.event() {
                 Some(InputAdded(id)) => {
@@ -286,11 +283,13 @@ impl MiniGame for Sumo {
                     if alive && handle == &body_handle {
                         if player.alive {
                             player.deaths = player.deaths + 1;
+                            player.death_count_text.color = [0.75, 0.05, 0.05];
+                            player.death_count_text.text = format!("{}", player.deaths);
                         }
                         player.alive = false;
                         //TODO set text of player here;
                         let draw_obj = &mut player.draw_component;
-                        draw.set_color(draw_obj, [0.05, 0.05, 0.05]);
+                        draw_obj.set_color([0.05, 0.05, 0.05]);
                     }
                 }
             });
@@ -298,6 +297,7 @@ impl MiniGame for Sumo {
 
         for player in &mut self.state.players.iter_mut() {
             if player.alive {
+                player.death_count_text.color = player.color;
                 if let Some(id) = player.controller_inst_id {
                     if let Some(ctrlr_state) = input.get_controller_state(id) {
                         let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32); // * 55.0;
@@ -320,12 +320,8 @@ impl MiniGame for Sumo {
         for player in self.state.players.iter_mut() {
             //            let shape = &object.drawn_shape;
             // Set the draw transform matrix for each object
-            match &mut player.draw_component {
-                &mut DrawComponent::Vertex { ref mut transform, .. } => {
-                    transform.transform = physics.get_transformation(&player.physics_component);
-                }
-                _ => ()
-            }
+
+            player.draw_component.transform.transform = physics.get_transformation(&player.physics_component);
         }
     }
 
@@ -338,7 +334,8 @@ impl MiniGame for Sumo {
         }
 
         for player in &mut self.state.players.iter_mut() {
-            draw_system.draw(&mut player.draw_component)
+            draw_system.draw(&mut player.draw_component);
+            draw_system.draw(&mut player.death_count_text);
         }
     }
 }

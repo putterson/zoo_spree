@@ -113,7 +113,7 @@ pub fn main() {
     }
 }
 
-enum Component {
-    Physics(PhysicsObject),
-    Draw(DrawComponent),
-}
+//enum Component {
+//    Physics(PhysicsObject),
+//    Draw(VertexComponent),
+//}
