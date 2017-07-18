@@ -81,8 +81,8 @@ pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physic
 
     return (draw_object, physics_object);
 }
-
-pub struct ComponentStore {
-    pub draw: Vec<DrawComponent>,
-    pub physics: Vec<PhysicsObject>,
-}
+//
+//pub struct ComponentStore {
+//    pub draw: Vec<DrawComponent>,
+//    pub physics: Vec<PhysicsObject>,
+//}
