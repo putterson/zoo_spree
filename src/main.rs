@@ -24,12 +24,9 @@ mod game;
 mod draw;
 mod physics;
 
-use input::{InputSystem, ControllerState};
+use input::InputSystem;
 
 use draw::DrawSystem;
-use draw::DrawComponent;
-
-use physics::PhysicsObject;
 use physics::PhysicsSystem;
 
 use game::minigame::MiniGame;

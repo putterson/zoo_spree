@@ -1,23 +1,15 @@
 use std::f32;
 use std::i16;
 
-use std::io;
-use std::io::Write;
-
-use input::InputSystem;
-
 use game::minigame::MiniGame;
 use game::minigame::create_ring;
-
-use physics::PhysicsSystem;
-use physics::PhysicsObject;
 use game::minigame::Point;
+
+use physics::{PhysicsSystem, PhysicsComponent};
 use draw;
-use draw::Color;
-use draw::DrawSystem;
-use draw::DrawComponent;
-use draw::VertexComponent;
-use draw::TextComponent;
+use draw::IDENTITY;
+use draw::{Color, DrawSystem, DrawComponent, VertexComponent, TextComponent};
+use input::InputSystem;
 use input::ID;
 use input::InputEvent::{InputAdded, InputRemoved};
 
@@ -36,24 +28,24 @@ struct Player {
     controller_inst_id: Option<ID>,
     draw_component: VertexComponent,
     death_count_text: TextComponent,
-    physics_component: PhysicsObject,
-    //    object: GameObject,
+    physics_component: PhysicsComponent,
 }
 
 struct GameState {
     walls: Vec<Wall>,
     ring: Ring,
     players: Vec<Player>,
+    rounds: u64,
 }
 
 struct Ring {
     draw_component: VertexComponent,
-    physics_component: PhysicsObject,
+    physics_component: PhysicsComponent,
 }
 
 struct Wall {
     draw_component: VertexComponent,
-    physics_component: PhysicsObject,
+    physics_component: PhysicsComponent,
 }
 
 impl GameState {
@@ -112,11 +104,11 @@ impl GameState {
 
             let physics_object = physics_system.create_body_stl(include_bytes!("../../../models/arrow_head.stl"), true);
 
-//            let text_object = draw_system.create_text();
+            //            let text_object = draw_system.create_text();
             let draw_body_object = draw_system.create_draw_object_stl(include_bytes!("../../../models/arrow_head.stl"), player_object.color);
 
             player_object.draw_component = draw_body_object;
-//            player_object.death_count_text;
+            //            player_object.death_count_text;
             player_object.physics_component = physics_object;
 
             player_object.alive = true;
@@ -133,7 +125,6 @@ impl GameState {
     }
 
     fn remove_player_object_by_controller_id(&mut self,
-                                             draw_system: &mut DrawSystem,
                                              physics_system: &mut PhysicsSystem,
                                              id: ID) {
         self.players.retain(|ref p| {
@@ -220,6 +211,7 @@ impl MiniGame for Sumo {
                 walls: walls,
                 ring: ring,
                 players: vec![],
+                rounds: 0,
             }
         }
     }
@@ -239,6 +231,10 @@ impl MiniGame for Sumo {
 
     fn step(&mut self, draw: &mut DrawSystem, physics: &mut PhysicsSystem, input: &mut InputSystem) {
         if self.done() {
+            for player in self.state.players.iter_mut() {
+                player.death_count_text.text = format!("{}", self.state.rounds - player.deaths);
+            }
+            self.state.rounds = self.state.rounds + 1;
             self.state.revive_player_object(draw, physics);
         }
 
@@ -247,12 +243,14 @@ impl MiniGame for Sumo {
             match input.event() {
                 Some(InputAdded(id)) => {
                     let player_colors = [
-                        ([1.0, 0.0, 0.0], "Red"),
-                        ([0.0, 1.0, 0.0], "Green"),
+                        ([1.0, 0.2, 0.0], "Orange"),
+                        ([0.2, 0.0, 1.0], "Purple"),
+                        ([0.8, 0.0, 0.0], "Red"),
+                        ([0.0, 0.8, 0.0], "Green"),
+                        ([0.8, 0.8, 0.0], "Yellow"),
                         ([0.0, 0.0, 1.0], "Blue"),
-                        ([0.0, 1.0, 1.0], "Cyan"),
-                        ([1.0, 0.0, 1.0], "Magenta"),
-                        ([1.0, 1.0, 0.0], "Yellow"),
+                        ([0.0, 0.8, 0.8], "Cyan"),
+                        ([0.8, 0.0, 0.8], "Magenta"),
                     ];
 
                     let (color, name) = player_colors[id as usize % player_colors.len()];
@@ -262,7 +260,7 @@ impl MiniGame for Sumo {
                 Some(InputRemoved(id)) => {
                     info!("Player removal event handling");
 
-                    self.state.remove_player_object_by_controller_id(draw, physics, id)
+                    self.state.remove_player_object_by_controller_id(physics, id)
                 }
                 None => { break 'events }
             }
@@ -270,10 +268,12 @@ impl MiniGame for Sumo {
 
         {
             let ring = &self.state.ring;
+            let rounds = self.state.rounds;
             let players = &mut self.state.players;
             let ring_phys = &ring.physics_component;
 
-            let contacts = physics.for_collisions(ring_phys, &mut |contact| {
+            //TODO change this to a for_each
+            let _ = physics.for_collisions(ring_phys, &mut |contact| {
                 //                let mut players = &self.state.players;
                 let (body_handle, fixture_handle) = contact.fixture_b();
 
@@ -283,11 +283,8 @@ impl MiniGame for Sumo {
                     if alive && handle == &body_handle {
                         if player.alive {
                             player.deaths = player.deaths + 1;
-                            player.death_count_text.color = [0.75, 0.05, 0.05];
-                            player.death_count_text.text = format!("{}", player.deaths);
                         }
                         player.alive = false;
-                        //TODO set text of player here;
                         let draw_obj = &mut player.draw_component;
                         draw_obj.set_color([0.05, 0.05, 0.05]);
                     }
@@ -300,7 +297,7 @@ impl MiniGame for Sumo {
                 player.death_count_text.color = player.color;
                 if let Some(id) = player.controller_inst_id {
                     if let Some(ctrlr_state) = input.get_controller_state(id) {
-                        let x = (ctrlr_state.axis_l_x as f32 / i16::MAX as f32); // * 55.0;
+                        let x = ctrlr_state.axis_l_x as f32 / i16::MAX as f32; // * 55.0;
                         let y = (ctrlr_state.axis_l_y as f32 / i16::MAX as f32) * -1.0; // * -55.0;
                         physics.apply_force_to_center([x, y, 0.0], &player.physics_component);
                     } else {
@@ -316,12 +313,42 @@ impl MiniGame for Sumo {
         physics.step();
 
 
-        // Graphics step (just set the component inputs)
-        for player in self.state.players.iter_mut() {
-            //            let shape = &object.drawn_shape;
-            // Set the draw transform matrix for each object
+        let text_pos = |i: usize| {
+            let quadrant = i % 4;
+            let rounds = i / 4;
+            let edge_dist = 0.98;
+            let bound_dist = 0.12;
+            let dist_step = 0.12;
 
+            let mut transform = IDENTITY;
+
+            match quadrant {
+                0 => {
+                    transform.transform[3][0] = -edge_dist + bound_dist + (rounds as f32 * dist_step);
+                    transform.transform[3][1] = -edge_dist;
+                }
+                1 => {
+                    transform.transform[3][0] = edge_dist - (rounds as f32 * dist_step);
+                    transform.transform[3][1] = -edge_dist;
+                }
+                2 => {
+                    transform.transform[3][0] = edge_dist - (rounds as f32 * dist_step);
+                    transform.transform[3][1] = edge_dist - dist_step * 2.0;
+                }
+                3 => {
+                    transform.transform[3][0] = -edge_dist + bound_dist + (rounds as f32 * dist_step);
+                    transform.transform[3][1] = edge_dist - dist_step * 2.0;
+                }
+                _ => {}
+            }
+
+            return transform;
+        };
+
+        // Graphics step (just set the component inputs)
+        for (i, player) in self.state.players.iter_mut().enumerate() {
             player.draw_component.transform.transform = physics.get_transformation(&player.physics_component);
+            player.death_count_text.transform = text_pos(i);
         }
     }
 

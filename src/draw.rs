@@ -85,7 +85,7 @@ pub type Color = [f32; 3];
 const CLEAR_COLOR: [f32; 4] = [0.0, 0.0, 0.0, 1.0];
 
 // Identity matrix
-const TRANSFORM: Transform = Transform {
+pub const IDENTITY: Transform = Transform {
     transform: [[1.0, 0.0, 0.0, 0.0],
         [0.0, 1.0, 0.0, 0.0],
         [0.0, 0.0, 1.0, 0.0],
@@ -137,6 +137,7 @@ impl DrawComponent for VertexComponent {
 pub struct TextComponent {
     pub color: Color,
     pub text: String,
+    pub transform: Transform,
     renderer: Renderer<Resources, SDLFactory>,
 }
 
@@ -145,8 +146,11 @@ impl DrawComponent for TextComponent {
         self.color = new_color;
     }
     fn draw(&mut self, resize: bool, encoder: &mut Encoder<Resources, CommandBuffer>, color_view: &RenderTargetView<Resources, ColorFormat>) {
-        self.renderer.add(self.text.as_ref(), [0, 0], [self.color[0], self.color[1], self.color[2], 1.0]);
-        self.renderer.draw(encoder, color_view).unwrap();
+        self.renderer.add_at(
+            self.text.as_ref(),
+            [-self.transform.transform[3][0], -self.transform.transform[3][1], 1.0],
+            [self.color[0], self.color[1], self.color[2], 1.0]);
+        self.renderer.draw_at(encoder, color_view, IDENTITY.transform).unwrap();
     }
 }
 
@@ -221,7 +225,7 @@ impl DrawSystem {
             vertices: vertices,
             translation: [0.0, 0.0],
             rotation: 0.0,
-            transform: TRANSFORM,
+            transform: IDENTITY,
             bundle: bundle,
             update_model: true,
         }
@@ -298,10 +302,11 @@ impl DrawSystem {
     }
 
     pub fn create_text(&self) -> TextComponent {
-        let mut normal_text = gfx_text::new(self.factory.clone()).with_size(60).unwrap();
+        let normal_text = gfx_text::new(self.factory.clone()).with_size(60).unwrap();
         return TextComponent {
             text: "".to_owned(),
             color: [1.0, 1.0, 1.0],
+            transform: IDENTITY,
             renderer: normal_text,
         };
     }

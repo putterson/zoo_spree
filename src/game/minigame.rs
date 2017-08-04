@@ -1,11 +1,9 @@
 use input::InputSystem;
 use draw;
 use draw::DrawSystem;
-use draw::DrawComponent;
 use draw::VertexComponent;
 use physics::PhysicsSystem;
-use physics::PhysicsObject;
-use physics::B2Point;
+use physics::PhysicsComponent;
 use std;
 
 pub trait MiniGame
@@ -21,7 +19,7 @@ pub trait MiniGame
 pub type Point = [f32; 3];
 pub type Color = [f32; 3];
 
-pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physics: &mut PhysicsSystem) -> (VertexComponent, PhysicsObject) {
+pub fn create_ring(id: f32, od: f32, color: Color, draw: &mut DrawSystem, physics: &mut PhysicsSystem) -> (VertexComponent, PhysicsComponent) {
     let pi = std::f32::consts::PI;
 
     let mut vertices: Vec<draw::Point> = vec![];

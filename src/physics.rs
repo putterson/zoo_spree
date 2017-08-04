@@ -3,19 +3,13 @@ extern crate wrapped2d;
 use self::wrapped2d::b2;
 use self::wrapped2d::handle::TypedHandle;
 use self::wrapped2d::user_data::NoUserData;
-use self::wrapped2d::collision::shapes::Shape;
 use self::wrapped2d::collision::shapes::chain::ChainShape;
 use physics::wrapped2d::wrap::WrappedRef;
-use physics::wrapped2d::dynamics::body::ContactIter;
 use physics::wrapped2d::dynamics::contacts::Contact;
 
 use game::minigame::Point as WorldPoint;
 
 use stl;
-
-use cgmath;
-
-pub type Point = [f32; 2];
 
 pub type B2Point = b2::Vec2;
 
@@ -41,7 +35,7 @@ impl PhysicsSystem {
         self.world.step(1. / 60., 6, 2);
     }
 
-    pub fn create_boundary_sensor(&mut self, vertices: &Vec<WorldPoint>) -> PhysicsObject {
+    pub fn create_boundary_sensor(&mut self, vertices: &Vec<WorldPoint>) -> PhysicsComponent {
         let mut body_def = b2::BodyDef::new();
 
         body_def.body_type = b2::BodyType::Static;
@@ -60,13 +54,13 @@ impl PhysicsSystem {
 
         self.world.body_mut(body_handle).create_fixture(&chain_boundary, &mut fixture_def);
 
-        return PhysicsObject {
+        return PhysicsComponent {
             transform: IDENTITY,
             body_handle: body_handle,
         };
     }
 
-    pub fn create_body(&mut self, vertices: &Vec<WorldPoint>, is_dynamic: bool) -> PhysicsObject {
+    pub fn create_body(&mut self, vertices: &Vec<WorldPoint>, is_dynamic: bool) -> PhysicsComponent {
         let mut body_def = b2::BodyDef::new();
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
@@ -81,13 +75,13 @@ impl PhysicsSystem {
         fixture_def.friction = 0.3;
         self.world.body_mut(body_handle).create_fixture(&body_box, &mut fixture_def);
 
-        return PhysicsObject {
+        return PhysicsComponent {
             transform: IDENTITY,
             body_handle: body_handle,
         };
     }
 
-    pub fn create_body_stl(&mut self, stl: &'static [u8], is_dynamic: bool) -> PhysicsObject {
+    pub fn create_body_stl(&mut self, stl: &'static [u8], is_dynamic: bool) -> PhysicsComponent {
         let mut body_def = b2::BodyDef::new();
         if is_dynamic {
             body_def.body_type = b2::BodyType::Dynamic;
@@ -127,22 +121,22 @@ impl PhysicsSystem {
             self.world.body_mut(body_handle).create_fixture(&body_box, &mut fixture_def);
         }
 
-        return PhysicsObject {
+        return PhysicsComponent {
             transform: IDENTITY,
             body_handle: body_handle,
         };
     }
 
-    pub fn destroy_body(&mut self, physics_object: &PhysicsObject) {
+    pub fn destroy_body(&mut self, physics_object: &PhysicsComponent) {
         self.world.destroy_body(physics_object.body_handle);
     }
 
-    pub fn apply_force_to_center(&self, force: WorldPoint, physics_object: &PhysicsObject) {
+    pub fn apply_force_to_center(&self, force: WorldPoint, physics_object: &PhysicsComponent) {
         let force_vec = world_to_physics(&force);
         self.world.body_mut(physics_object.body_handle).apply_force_to_center(&force_vec, true);
     }
 
-    pub fn get_transformation(&self, physics_object: &PhysicsObject) -> [[f32; 4]; 4] {
+    pub fn get_transformation(&self, physics_object: &PhysicsComponent) -> [[f32; 4]; 4] {
         // Update transformation matrix
         let body = self.world.body_mut(physics_object.body_handle);
         let transform = body.transform();
@@ -154,7 +148,7 @@ impl PhysicsSystem {
         return transform_matrix;
     }
 
-    pub fn for_collisions(&self, physics_object: &PhysicsObject, callback: &mut FnMut(WrappedRef<Contact>) -> ()) {
+    pub fn for_collisions(&self, physics_object: &PhysicsComponent, callback: &mut FnMut(WrappedRef<Contact>) -> ()) {
         let body = self.world.body(physics_object.body_handle);
 //        let wrapper = |a,b| {
 //            callback();
@@ -166,7 +160,7 @@ impl PhysicsSystem {
     }
 }
 
-pub struct PhysicsObject {
+pub struct PhysicsComponent {
     transform: [[f32; 4]; 4],
     //TODO: un-pub this (used in checking if players handle == collision handle)
     pub body_handle: TypedHandle<b2::Body>,

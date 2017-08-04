@@ -27,6 +27,7 @@ pub struct InputSystem {
 }
 
 pub type ID = i32;
+
 const KEYBOARD_ID: ID = -1;
 
 #[derive(Default)]
@@ -74,11 +75,13 @@ impl InputSystem {
         let mut event_queue = VecDeque::new();
 
         if config.keyboard {
-            let mut keyboard_controller = ControllerState::default();
-            keyboard_controller.inst_id = KEYBOARD_ID;
-            controller_states.push(keyboard_controller);
-            event_queue.push_back(InputAdded(KEYBOARD_ID));
-            info!("Keyboard enabled as controller {:?}.", KEYBOARD_ID);
+            for i in 0..8 {
+                let mut keyboard_controller = ControllerState::default();
+                keyboard_controller.inst_id = KEYBOARD_ID - i;
+                controller_states.push(keyboard_controller);
+                event_queue.push_back(InputAdded(KEYBOARD_ID - i));
+                info!("Keyboard enabled as controller {:?}.", KEYBOARD_ID - i);
+            }
         }
 
         return InputSystem {
@@ -152,10 +155,10 @@ impl InputSystem {
 
     fn update_keyboard(&mut self, event: Event) {
         match event {
-            Event::KeyDown { keycode: Some(keycode), .. }  => {
+            Event::KeyDown { keycode: Some(keycode), .. } => {
                 self.handle_axis_key(keycode, std::i16::MAX);
             }
-            Event::KeyUp { keycode: Some(keycode), ..} => {
+            Event::KeyUp { keycode: Some(keycode), .. } => {
                 self.handle_axis_key(keycode, 0);
             }
             _ => ()
@@ -175,7 +178,7 @@ impl InputSystem {
     fn handle_axis_key(&mut self, key: Keycode, value: i16) {
         if let Some((axis, direction)) = InputSystem::map_key_to_axis(key) {
             for c in self.controller_states.iter_mut() {
-                if c.inst_id == KEYBOARD_ID {
+                if c.inst_id <= KEYBOARD_ID {
                     c.set_axis(axis, value * direction);
                 }
             }
